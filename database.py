@@ -3,6 +3,7 @@ import sqlite3
 from sqlite3 import Connection
 from queue import Queue
 import os
+from path import *
 
 class Database:
     def __init__(self, db_name='images.db', pool_size=5):
@@ -85,4 +86,15 @@ def get_image_data(image_name):
         print(f"No data found for image name: {image_name}")
         return [0, 0, 0, 0]
 
-create_table()
+def create_table_values():
+    with open(os.path.join(path, "images_box.txt"), 'r') as box_file:
+        for box_line in box_file:
+            # Process each line as needed
+            parts = box_line.split()
+            # Assuming the first part is the image name and the rest are bounding box coordinates
+            image_name = parts[0]
+            value1 = parts[1]
+            value2 = parts[2]
+            value3 = parts[3]
+            value4 = parts[4]
+            add_image_data(image_name, value1, value2, value3, value4)
