@@ -25,8 +25,7 @@ the trainning dataset.
 be evaluated.
 
 
-The images_manufacturer_* gives the picture number, aircraft manufacured
-- Boeing, Airbus ... -. The trainval, train and test subsets are defined as for
+The images_manufacturer_* gives the picture number, aircraft manufacured - Boeing, Airbus ... -. The trainval, train and test subsets are defined as for
 images_family_*. The images_variant_* gives the picture number, aircraft
 vairant i.e : the specific model, 707-320, A340-400 etc ... . The trainval,
 train and test subsets are defined as for images_family_*. The images_*
