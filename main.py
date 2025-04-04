@@ -1,15 +1,4 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import cv2
 import os
-from sklearn.decomposition import PCA
-from sklearn.svm import SVC
-from sklearn.metrics import accuracy_score
-from command_general import *
-import joblib
-from database import *
-from data_extract import *
-from POD import *
 try:
     from path import path
 
@@ -22,6 +11,18 @@ except Exception as e:
         f.write('path = ' + "r'" + new_path + "'")
     print("Path created")
     from path import path
+
+import numpy as np
+import matplotlib.pyplot as plt
+import cv2
+from sklearn.decomposition import PCA
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score
+from command_general import *
+import joblib
+from database import *
+from data_extract import *
+from POD import *
 
 ## Main function
 def main():
