@@ -63,7 +63,11 @@ def command(method, train_status):
             return False
         case "show":
             image_number = input("image number: ")
-            show_image(image_number)
+            if image_number == 'image not found':
+                print('maybe an typo error')
+                print('try again')
+            else:
+                show_image(image_number)
             pass
         case "close":
             plt.close()
@@ -75,12 +79,12 @@ def command(method, train_status):
         case "train":
             print("extracting training data...")
             # Load the training data
-            f_train_data, f_train_label, m_train_data, m_train_label = data_extraction("train")
+            f_train_data, f_train_label, m_train_data, m_train_label, size = data_extraction("train")
             match method:
                 case "pod":
                     print("Training with POD")
                     # Add your training code here
-                    pod_train(f_train_data, f_train_label)
+                    pod_train(f_train_data, f_train_label, size)
             pass
         case "test":
             print("extracting test data...")

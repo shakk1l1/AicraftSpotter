@@ -1,11 +1,22 @@
+from fontTools.subset import prune_post_subset
+from scipy import sparse
+
 from path import *
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import LabelEncoder
 
-def pod_train(data, label):
+def pod_train(data, label, size):
+
+    # Encode labels
+    le = LabelEncoder()
+    encoded_labels = le.fit_transform(label)
+    print(encoded_labels)
+    print(len(encoded_labels))
     # centering
-    print("resizing data...")
-    data_train = pad_sequences(data)
+    #print("resizing data...")
+    #data_train = pad_sequences(data)
+    data_train = np.array(data)
     print("data shape: ", data_train.shape)
     print("transposing data...")
     D_train = data_train.T
@@ -13,6 +24,7 @@ def pod_train(data, label):
     D_m = np.mean(D_train, axis=1)[:, np.newaxis]
     print("centering data...")
     D0_train = D_train - D_m
+    print("centered data shape: ", D0_train.shape)
 
     # svd
     print("calculating SVD...")
@@ -21,12 +33,20 @@ def pod_train(data, label):
 
     # Plot the distribution of the eigenvalues
     print("plotting eigenvalues...")
-    plt.scatter(np.arange(64), s ** 2)
+    plt.title("Eigenvalues distribution")
+    plt.xlabel("Eigenvalue index")
+    plt.ylabel("Eigenvalue")
+    plt.grid()
+    plt.scatter(np.arange(len(s)), s **2)
+    print(s.shape)
     plt.show()
 
     # Plot the distribution of the POD coefficients
-
-    im = plt.scatter(A[:, 0], A[:, 1], c=label, alpha=0.6)
+    print("plotting POD coefficients...")
+    plt.title("POD coefficients distribution")
+    plt.xlabel("POD coefficient index")
+    plt.ylabel("POD coefficient")
+    im = plt.scatter(A[:, 0], A[:, 1], c=encoded_labels, cmap='Accent', alpha=0.6)
     plt.colorbar(im)
     plt.show()
     return None
