@@ -1,1 +1,0 @@
-path = 'C:\Users\ilyas\PycharmProjects\AicraftSpotter\data'

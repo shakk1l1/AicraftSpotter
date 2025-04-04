@@ -33,7 +33,7 @@ def commandpath():
         case "new":
             new_path = input('new path:')
             with open('path.py', 'w') as f:
-                f.write('path = ' + "'" + new_path + "'")
+                f.write('path = ' + "r'" + new_path + "'")
             print("Path saved!")
             commandpath()
         case _:

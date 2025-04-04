@@ -19,7 +19,7 @@ except Exception as e:
     print("Creating path file...")
     new_path = input('path to data folder (finish with .../AicraftSpotter/data):')
     with open('command_general.py', 'w') as f:
-        f.write('path = ' + "'" + new_path + "'")
+        f.write('path = ' + "r'" + new_path + "'")
     print("Path created")
     from path import path
 
