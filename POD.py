@@ -2,7 +2,7 @@ from path import *
 import numpy as np
 import matplotlib.pyplot as plt
 
-def pod(data, label):
+def pod_train(data, label):
     # centering
     print("resizing data...")
     data_train = pad_sequences(data)

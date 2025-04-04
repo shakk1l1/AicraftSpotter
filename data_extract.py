@@ -16,8 +16,12 @@ def data_extraction(set):
             f_data_path = os.path.join(path, "images_family_train.txt")
             f_images = []
             f_labels = []
+            with open(f_data_path, "rbU") as f:
+                num_lines = sum(1 for _ in f)
             with open(f_data_path, 'r') as file:
+                i = 0
                 for line in file:
+                    print("exracting family training data... " + i/num_lines + "%")
                     # Process each line as needed
                     parts = re.split(' ', line, maxsplit=1)
                     # Assuming the first part is the image name and the rest are labels
@@ -29,17 +33,23 @@ def data_extraction(set):
                     croped_img = img[x1+1:x2+1, y1+1:y2+1]
                     f_images.append(croped_img.flatten())
                     f_labels.append(family)
+                    i += 1
 
             print("family training data extracted")
             print("images: " + str(len(f_images)))
             print("labels: " + str(len(f_labels)))
+
             print("extracting manufacturer training data...")
 
             m_data_path = os.path.join(path, "images_manufacturer_train.txt")
             m_images = []
             m_labels = []
+            with open(m_data_path, "rbU") as f:
+                num_lines = sum(1 for _ in f)
             with open(m_data_path, 'r') as file:
+                i = 0
                 for line in file:
+                    print("exracting manufacturer training data... " + i/num_lines + "%")
                     # Process each line as needed
                     parts = re.split(' ', line, maxsplit=1)
                     # Assuming the first part is the image name and the rest are labels

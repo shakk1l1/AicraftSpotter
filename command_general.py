@@ -43,11 +43,11 @@ def commandpath():
 
     return None
 
-def command(method):
+def command(method, train_status):
     """
     Handle user commands for posting images to Instagram.
     """
-    c = input(">> ")
+    c = input('('+ train_status +')' + '>> ')
     match c:
         case 'help':
             print("List of commands")
@@ -58,20 +58,20 @@ def command(method):
             print('     train: train the model')
             print('     test: test the model')
             print('     method: change the method')
-            command(method)
+            pass
         case "esc":
-            return None
+            return False
         case "show":
             image_number = input("image number: ")
             show_image(image_number)
-            command(method)
+            pass
         case "close":
             plt.close()
             print("Image closed")
-            command(method)
+            pass
         case "path":
             commandpath()
-            command(method)
+            pass
         case "train":
             print("extracting training data...")
             # Load the training data
@@ -80,8 +80,8 @@ def command(method):
                 case "pod":
                     print("Training with POD")
                     # Add your training code here
-                    pod(f_train_data, f_train_label)
-            command(method)
+                    pod_train(f_train_data, f_train_label)
+            pass
         case "test":
             print("extracting test data...")
             # Load the test data
@@ -90,15 +90,16 @@ def command(method):
                     print("Testing with POD")
                     # Add your testing code here
                     print("WIP")
-            command(method)
+            pass
 
         case "method":
             print("select the AI method: ")
             print("     >POD")
             method = input(">> ")
             print("method selected: " + method)
-            command(method)
+            pass
         case _:
             print("unknown command")
             print("use help for commands list")
-            command(method)
+            pass
+    return True

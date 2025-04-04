@@ -49,7 +49,10 @@ def main():
     method = input(">> ".lower())
     print("method selected: " + method)
     print("to begin and see the list of commands, type 'help'")
-    command(method)
+    on = True
+    train_status = "not trained"
+    while on:
+        on = command(method, train_status)
 
 
 if __name__ == '__main__':
