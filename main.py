@@ -7,7 +7,6 @@ from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
 from command_general import *
 import joblib
-from path import *
 from database import *
 from data_extract import *
 from POD import *
@@ -15,6 +14,18 @@ from POD import *
 ## Main function
 def main():
     print("Welcome to the AI Craft Spotter")
+    try:
+        from path import path
+        pathtest = path
+    except Exception as e:
+        print("path file not found")
+        print("Creating path file...")
+        new_path = input('path to data folder (finish with .../AicraftSpotter/data):')
+        with open('command_general.py', 'w') as f:
+            f.write('path = ' + "'" + new_path + "'")
+        print("Path created")
+        from path import path
+
     try:
         print("Connecting to database...")
         db.get_connection()
@@ -33,16 +44,6 @@ def main():
         create_table()
         create_table_values()
         print("\nDatabase created")
-
-    try:
-        pathtest = path
-    except Exception as e:
-        print("path file not found")
-        print("Creating path file...")
-        new_path = input('path to data folder (finish with .../AicraftSpotter/data):')
-        with open('command_general.py', 'w') as f:
-            f.write('path = ' + "'" + new_path + "'")
-        print("Path created")
 
     print("select the AI method: ")
     print("     >POD")

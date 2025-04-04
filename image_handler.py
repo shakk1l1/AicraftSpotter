@@ -29,7 +29,6 @@ def show_image(image_number):
     """
     # get the image path
     image_path = get_image_path(image_number + '.jpg')
-    print(image_path)
 
     # Read the image using OpenCV
     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
