@@ -75,12 +75,12 @@ def command(method):
         case "train":
             print("extracting training data...")
             # Load the training data
-            f_train_data, m_train_data = data_extraction("train")
+            f_train_data, f_train_label, m_train_data, m_train_label = data_extraction("train")
             match method:
                 case "pod":
                     print("Training with POD")
                     # Add your training code here
-                    pod(f_train_data, m_train_data)
+                    pod(f_train_data, f_train_label)
             command(method)
         case "test":
             print("extracting test data...")
