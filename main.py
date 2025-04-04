@@ -1,4 +1,5 @@
 import os
+print("Welcome to the AI Craft Spotter")
 try:
     from path import path
 
@@ -7,7 +8,7 @@ except Exception as e:
     print("path file not found")
     print("Creating path file...")
     new_path = input('path to data folder (finish with .../AicraftSpotter/data):')
-    with open('command_general.py', 'w') as f:
+    with open('path.py', 'w') as f:
         f.write('path = ' + "r'" + new_path + "'")
     print("Path created")
     from path import path
@@ -26,7 +27,6 @@ from POD import *
 
 ## Main function
 def main():
-    print("Welcome to the AI Craft Spotter")
     try:
         print("Connecting to database...")
         db.get_connection()
