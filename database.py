@@ -6,7 +6,7 @@ import os
 from path import *
 
 class Database:
-    def __init__(self, db_name='images.db', pool_size=5):
+    def __init__(self, db_name='image_cropratio.db', pool_size=5):
         self.db_name = db_name
         self.pool = Queue(maxsize=pool_size)
         for _ in range(pool_size):
@@ -71,7 +71,7 @@ def verify_database_count():
         return False
 
 def delete_database():
-    db_name = 'image_data.db'
+    db_name = 'image_cropratio.db'
     if os.path.exists(db_name):
         os.remove(db_name)
         print(f"Database {db_name} deleted.")
@@ -87,8 +87,15 @@ def get_image_data(image_name):
         return [0, 0, 0, 0]
 
 def create_table_values():
+    with open(os.path.join(path, "images_box.txt"), "rb") as f:
+        num_lines = sum(1 for _ in f)
+    i = 0
     with open(os.path.join(path, "images_box.txt"), 'r') as box_file:
         for box_line in box_file:
+            if ((i / num_lines) * 100) % 2 == 0:
+                print('\r' + ' ' * 30, end='', flush=True)  # Clear the line
+                print('\r', end='', flush=True)  # Move the cursor back to the
+                print("exracting data... " + str((i / num_lines) * 100) + "%", end='', flush=True)
             # Process each line as needed
             parts = box_line.split()
             # Assuming the first part is the image name and the rest are bounding box coordinates
@@ -98,3 +105,4 @@ def create_table_values():
             value3 = parts[3]
             value4 = parts[4]
             add_image_data(image_name, value1, value2, value3, value4)
+            i += 1

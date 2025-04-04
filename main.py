@@ -16,8 +16,8 @@ from POD import *
 def main():
     print("Welcome to the AI Craft Spotter")
     try:
+        print("Connecting to database...")
         db.get_connection()
-        print("Database found")
         if verify_database_count():
             print("Database verified")
         else:
@@ -32,7 +32,7 @@ def main():
         print("Creating database...")
         create_table()
         create_table_values()
-        print("Database created")
+        print("\nDatabase created")
 
     try:
         pathtest = path
