@@ -12,7 +12,7 @@ except Exception as e:
         f.write('path = ' + "r'" + new_path + "'")
     print("Path created")
     from path import path
-
+image_list = os.listdir(path + '/images')
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
@@ -45,16 +45,18 @@ def main():
         create_table()
         create_table_values()
         print("\nDatabase created")
-
-    print("select the AI method: ")
-    print("     >POD")
-    method = input(">> ".lower())
-    print("method selected: " + method)
+    print("this is a command line interface")
+    print("the main interface is in the command line")
+    print("it looks like this: (xxxxx/xxxxx)>>")
+    print("                       ^     ^")
+    print("                       |     |")
+    print("                    method train_status")
     print("to begin and see the list of commands, type 'help'")
+    method = "None"
     on = True
     train_status = "not trained"
     while on:
-        on = command(method, train_status)
+        on, method, train_status = command(method, train_status)
 
 
 if __name__ == '__main__':

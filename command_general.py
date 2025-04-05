@@ -5,6 +5,7 @@ from database import *
 from data_extract import *
 from POD import *
 from image_handler import *
+from main import image_list
 
 def commandpath():
     """
@@ -47,10 +48,12 @@ def command(method, train_status):
     """
     Handle user commands for posting images to Instagram.
     """
-    c = input('('+ train_status +')' + '>> ')
+    c = input('('+ method + '/' + train_status +')' + '>> ')
+    on = True
     match c:
         case 'help':
             print("List of commands")
+            print('     help: list of commands')
             print('     esc: escape')
             print('     path: open path commands')
             print('     close: close image')
@@ -58,9 +61,10 @@ def command(method, train_status):
             print('     train: train the model')
             print('     test: test the model')
             print('     method: change the method')
+            print('     predict: predict specific image')
             pass
         case "esc":
-            return False
+            on = False
         case "show":
             image_number = input("image number: ")
             if image_number == 'image not found':
@@ -77,14 +81,19 @@ def command(method, train_status):
             commandpath()
             pass
         case "train":
-            print("extracting training data...")
-            # Load the training data
-            f_train_data, f_train_label, m_train_data, m_train_label, size = data_extraction("train")
-            match method:
-                case "pod":
-                    print("Training with POD")
-                    # Add your training code here
-                    pod_train(f_train_data, f_train_label, size)
+            if method is None:
+                print("No method selected, please select a method using method command")
+            else:
+                print("extracting training data...")
+                # Load the training data
+                f_train_data, f_train_label, m_train_data, m_train_label = data_extraction("train")
+                # update size variable
+                match method:
+                    case "pod":
+                        print("Training with POD")
+                        # Add your training code here
+                        pod_train(f_train_data, f_train_label, m_train_data, m_train_label)
+                        train_status = "trained"
             pass
         case "test":
             print("extracting test data...")
@@ -95,15 +104,39 @@ def command(method, train_status):
                     # Add your testing code here
                     print("WIP")
             pass
-
         case "method":
             print("select the AI method: ")
-            print("     >POD")
-            method = input(">> ")
+            print("     > pod")
+            method = input("=> ")
             print("method selected: " + method)
+            print("checking if method is valid and already trained...")
+            match method:
+                case "pod":
+                    if f_D_m is None or m_D_m is None:
+                        print("method not trained")
+                        train_status = "not trained"
+                    else:
+                        print("method already trained")
+                        print("you can already use it")
+                        train_status = "trained"
+                case _:
+                    print("unknown method")
+                    print("use help for commands list")
+            pass
+        case "predict":
+            if train_status == "not trained":
+                print("No training done, please train the model first")
+            else:
+                image_number = input("image number: ")
+                if (image_number + '.jpg') in image_list:
+                    pod_predict(image_number)
+                else:
+                    print("image not found")
+                    print("maybe an typo error")
+                    print("try again")
             pass
         case _:
             print("unknown command")
             print("use help for commands list")
             pass
-    return True
+    return on, method, train_status

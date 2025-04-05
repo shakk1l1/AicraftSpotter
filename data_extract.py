@@ -1,14 +1,13 @@
 import os
-
 import cv2
-
 from path import *
-
 from database import get_image_data
-
 import regex as re
 
+size = None
+
 def data_extraction(set):
+    global size
     match set:
         case "train":
             print("loading trainning data path...")
@@ -112,4 +111,4 @@ def data_extraction(set):
     print("\nmanufacturer data extracted")
     print("images: " + str(len(m_images)))
     print("labels: " + str(len(m_labels)))
-    return f_images, f_labels, m_images, m_labels, size
+    return f_images, f_labels, m_images, m_labels
