@@ -1,5 +1,8 @@
 import os
+
 print("Welcome to the AI Craft Spotter")
+
+## Check if the path file exists
 try:
     from path import path
 
@@ -13,6 +16,9 @@ except Exception as e:
     print("Path created")
     from path import path
 image_list = os.listdir(path + '/images')
+
+
+## Importing libraries
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
@@ -27,6 +33,8 @@ from POD import *
 
 ## Main function
 def main():
+
+    # database connection
     try:
         print("Connecting to database...")
         db.get_connection()

@@ -20,7 +20,7 @@ def data_extraction(set):
         case _:
             print("Invalid set")
             return None
-    if input("resize image (for squared final images (POD needed))? (y/n) ") == 'y':
+    if input("resize image (for squared final images (needed for POD))? (y/n) ") == 'y':
         size = int(input("define size of the image (x, x): "))
         resizing = True
     else:

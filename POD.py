@@ -15,6 +15,7 @@ f_s = None
 f_Vt = None
 f_clf = None
 f_le = None
+f_encoded_labels = None
 
 m_D_m = None
 m_U = None
@@ -22,15 +23,16 @@ m_s = None
 m_Vt = None
 m_clf = None
 m_le = None
+m_encoded_labels = None
 
 def pod_train(data_family, label_family, data_manufacturer, label_manufacturer):
     global f_D_m, f_U, f_s, f_Vt, f_clf, f_le
     global m_D_m, m_U, m_s, m_Vt, m_clf, m_le
     print("POD training")
     print("training family model...")
-    f_D_m, f_U, f_s, f_Vt, f_le, f_clf = pod_train_s(data_family, label_family)
+    f_D_m, f_U, f_s, f_Vt, f_le, f_clf, f_encoded_labels = pod_train_s(data_family, label_family)
     print("training manufacturer model...")
-    m_D_m, m_U, m_s, m_Vt, m_le, m_clf = pod_train_s(data_manufacturer, label_manufacturer)
+    m_D_m, m_U, m_s, m_Vt, m_le, m_clf, m_encoded_labels = pod_train_s(data_manufacturer, label_manufacturer)
 
 def pod_train_s(data, label):
     # Encode labels
@@ -75,7 +77,7 @@ def pod_train_s(data, label):
     print("training SVC...")
     clf = SVC(probability=True)
     clf.fit(A, encoded_labels)
-    return D_m, U, s, Vt, le, clf
+    return D_m, U, s, Vt, le, clf, encoded_labels
 
 def pod_predict(image_name):
     from data_extract import size
@@ -113,6 +115,18 @@ def pod_predict(image_name):
     pred_proba = f_clf.predict_proba(A_img)
     pred_percentage = np.max(pred_proba) * 100
     print(f"Predicted family: {pred[0]} ({pred_percentage:.2f}%)")
+    print(f"2nd predicted family: {pred[1]}")
+
+    if input("show plot of the POD coefficients? (y/n) ") == 'y':
+        print("plotting POD coefficients...")
+        plt.title("POD coefficients distribution")
+        plt.xlabel("POD coefficient index")
+        plt.ylabel("POD coefficient")
+        A = np.dot(np.diag(f_s), f_Vt).T
+        im = plt.scatter(A[:, 0], A[:, 1], c=f_encoded_labels, cmap='Accent', alpha=0.6)
+        plt.scatter(A_img[:, 0], A_img[:, 1], c='red', s = 100, marker='x', label='Image')
+        plt.colorbar(im)
+        plt.show()
 
     print("predicting manufacturer...")
     # centering
@@ -125,6 +139,18 @@ def pod_predict(image_name):
     pred_proba = m_clf.predict_proba(A_img)
     pred_percentage = np.max(pred_proba) * 100
     print(f"Predicted manufacturer: {pred[0]} ({pred_percentage:.2f}%)")
+    print(f"2nd predicted manufacturer: {pred[1]}")
+
+    if input("show plot of the POD coefficients? (y/n) ") == 'y':
+        print("plotting POD coefficients...")
+        plt.title("POD coefficients distribution")
+        plt.xlabel("POD coefficient index")
+        plt.ylabel("POD coefficient")
+        A = np.dot(np.diag(m_s), m_Vt).T
+        im = plt.scatter(A[:, 0], A[:, 1], c=m_encoded_labels, cmap='Accent', alpha=0.6)
+        plt.scatter(A_img[:, 0], A_img[:, 1], c='red', s = 100, marker='x', label='Image')
+        plt.colorbar(im)
+        plt.show()
     return None
 
 # def pad_sequences(sequences, maxlen=None, dtype='float32', padding='post', truncating='post', value=0.):
