@@ -44,11 +44,11 @@ def commandpath():
 
     return None
 
-def command(method, train_status):
+def command(model, train_status):
     """
     Handle user commands for posting images to Instagram.
     """
-    c = input('('+ method + '/' + train_status +')' + '>> ')
+    c = input('('+ model + '/' + train_status +')' + '>> ')
     on = True
     match c:
         case 'help':
@@ -59,8 +59,9 @@ def command(method, train_status):
             print('     close: close image')
             print('     show: show image')
             print('     train: train the model')
+            print('     load: Load the models')
             print('     test: test the model')
-            print('     method: change the method')
+            print('     model: change the model')
             print('     predict: predict specific image')
             pass
         case "esc":
@@ -81,14 +82,14 @@ def command(method, train_status):
             commandpath()
             pass
         case "train":
-            if method is None:
-                print("No method selected, please select a method using method command")
+            if model is None:
+                print("No model selected, please select a model using model command")
             else:
                 print("extracting training data...")
                 # Load the training data
                 f_train_data, f_train_label, m_train_data, m_train_label = data_extraction("train")
                 # update size variable
-                match method:
+                match model:
                     case "pod":
                         print("Training with POD")
                         # Add your training code here
@@ -98,29 +99,29 @@ def command(method, train_status):
         case "test":
             print("extracting test data...")
             # Load the test data
-            match method:
+            match model:
                 case "pod":
                     print("Testing with POD")
                     # Add your testing code here
                     print("WIP")
             pass
-        case "method":
-            print("select the AI method: ")
+        case "model":
+            print("select the AI model: ")
             print("     > pod")
-            method = input("=> ")
-            print("method selected: " + method)
-            print("checking if method is valid and already trained...")
-            match method:
+            model = input("=> ")
+            print("model selected: " + model)
+            print("checking if model is valid and already trained...")
+            match model:
                 case "pod":
                     if f_D_m is None or m_D_m is None:
-                        print("method not trained")
+                        print("model not trained")
                         train_status = "not trained"
                     else:
-                        print("method already trained")
+                        print("model already trained")
                         print("you can already use it")
                         train_status = "trained"
                 case _:
-                    print("unknown method")
+                    print("unknown model")
                     print("use help for commands list")
             pass
         case "predict":
@@ -135,8 +136,13 @@ def command(method, train_status):
                     print("maybe an typo error")
                     print("try again")
             pass
+        case "load":
+            train_status = load_models(model) 
+            pass
+        case "backdoor":
+            pass
         case _:
             print("unknown command")
             print("use help for commands list")
             pass
-    return on, method, train_status
+    return on, model, train_status

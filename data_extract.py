@@ -3,8 +3,22 @@ import cv2
 from path import *
 from database import get_image_data
 import regex as re
+import joblib
 
 size = None
+
+def load_models(model):
+    match model:
+        case "POD":
+            print("Loading POD models...")
+            load_POD_models()
+            trained = 'trained'
+            
+        case _:
+            print("Invalid model")
+            trained = 'not trained'
+    return trained
+            
 
 def data_extraction(set):
     global size
@@ -34,7 +48,7 @@ def data_extraction(set):
         i = 0
         for line in file:
             if (round(i / num_lines, 1) * 100) % 2 == 0:
-                print('\r' + ' ' * 30, end='', flush=True)  # Clear the line
+                print('\r' + ' ' * 50, end='', flush=True)  # Clear the line
                 print('\r', end='', flush=True)  # Move the cursor back to the
                 print("exracting family data... " + str((i / num_lines) * 100) + "%", end='', flush=True)
             # Process each line as needed
@@ -61,6 +75,7 @@ def data_extraction(set):
                     y2 = int(y2 + ((size - (y2 - y1)) / 2))
             croped_img = img[y1 + 1:y2 + 1, x1 +1:x2 +1]
             if resizing:
+                # Adjust the size of the image
                 croped_img = cv2.resize(croped_img, (size, size))
             f_images.append(croped_img.flatten())
             f_labels.append(family)
@@ -79,7 +94,7 @@ def data_extraction(set):
         i = 0
         for line in file:
             if (round(i / num_lines, 1) * 100) % 2 == 0:
-                print('\r' + ' ' * 30, end='', flush=True)  # Clear the line
+                print('\r' + ' ' * 50, end='', flush=True)  # Clear the line
                 print('\r', end='', flush=True)  # Move the cursor back to the
                 print("exracting manufacturer data... " + str((i / num_lines) * 100) + "%", end='', flush=True)
             # Process each line as needed
@@ -112,3 +127,12 @@ def data_extraction(set):
     print("images: " + str(len(m_images)))
     print("labels: " + str(len(m_labels)))
     return f_images, f_labels, m_images, m_labels
+
+def change_size():
+    """
+    Change the size of the images
+    """
+    global size
+    size = joblib.load(os.path.join(path, 'models', 'size.pkl'))
+    print("Size changed to:", size)
+    return size
