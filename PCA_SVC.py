@@ -159,15 +159,17 @@ def svc_predict(image_name):
     croped_img = img[y1 + 1:y2 + 1, x1 + 1:x2 + 1]
     croped_img = cv2.resize(croped_img, (size, size), interpolation=cv2.INTER_AREA)
     d_img = croped_img.flatten()
+    d_img_array = []
+    d_img_array.append(d_img)
     end_extract = time.time()
 
     print("predicting family...")
     print("normalizing data...")
-    d_img = d_img / 255.0
+    d_img_array = np.array(d_img_array) / 255.0
     # centering
     print("centering data...")
     start_center_f = time.time()
-    d_img_c = d_img.T - f_D_m
+    d_img_c = d_img_array - f_D_m
     end_center_f = time.time()
 
     # # pca
@@ -179,8 +181,7 @@ def svc_predict(image_name):
     # Predicting
     print("predicting...")
     start_predict_f = time.time()
-    raw_pred = f_clf.predict(A_img)
-    pred = f_le.inverse_transform(raw_pred)
+    pred = f_clf.predict(A_img)
     pred_proba = f_clf.predict_proba(A_img)
     end_predict_f = time.time()
     pred_percentage = np.max(pred_proba) * 100
@@ -189,7 +190,7 @@ def svc_predict(image_name):
     print("predicting manufacturer...")
     # centering
     start_center_m = time.time()
-    d_img_c = d_img.T - m_D_m
+    d_img_c = d_img_array - m_D_m
     end_center_m = time.time()
     # # pca
     print("calculating pca...")
@@ -199,8 +200,7 @@ def svc_predict(image_name):
     # Predicting
     print("predicting...")
     start_predict_m = time.time()
-    raw_pred = m_clf.predict(A_img)
-    pred = m_le.inverse_transform(raw_pred)
+    pred = m_clf.predict(A_img)
     pred_proba = m_clf.predict_proba(A_img)
     end_predict_m = time.time()
     pred_percentage = np.max(pred_proba) * 100
