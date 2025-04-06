@@ -43,7 +43,7 @@ def perform_pod(images, n_components=50):
 # Train classifier
 def train_classifier(pca, images, labels):
     projected_images = pca.transform(images)
-    clf = SVC(kernel='linear')
+    clf = SVC(kernel='linear', probability=True)
     clf.fit(projected_images, labels)
     return clf
 
@@ -56,11 +56,11 @@ def evaluate_classifier(clf, pca, images, labels):
 
 # Main function
 
-train_images, train_labels = load_images('data/images', 'data/images_manufacturer_train.txt')
+train_images, train_labels = load_images('data/images', 'data/images_manufacturer_trainval.txt')
 test_images, test_labels = load_images('data/images', 'data/images_manufacturer_test.txt')
 
 centered_train_images, mean_image = preprocess_images(train_images)
-centered_test_images = test_images - mean_image
+centered_test_images = (test_images / 255.0) - mean_image
 
 pca = perform_pod(centered_train_images)
 clf = train_classifier(pca, centered_train_images, train_labels)

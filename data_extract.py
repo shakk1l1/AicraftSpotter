@@ -119,8 +119,7 @@ def data_extraction(set):
     end_file_time_1 = time.time()
 
     print("\nfamily data extracted")
-    print("images: " + str(len(f_images)))
-    print("labels: " + str(len(f_labels)))
+    print("number of images and labels: " + str(len(f_images)))
 
     m_images = []
     m_labels = []
@@ -154,8 +153,7 @@ def data_extraction(set):
                 print("exracting manufacturer data... " + str((i / num_lines) * 100) + "%" + f"  time per file: {time.time() - start:.2f} seconds", end='', flush=True)
             i += 1
     print("\nmanufacturer data extracted")
-    print("images: " + str(len(m_images)))
-    print("labels: " + str(len(m_labels)))
+    print("number of images and labels: " + str(len(m_images)))
 
     end_file_time_2 = time.time()
     print(f"Time taken to extract family data: {end_file_time_1 - start_file_time_1:.2f} seconds")

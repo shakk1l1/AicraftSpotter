@@ -216,7 +216,6 @@ def svc_predict(image_name):
     return None
 
 def svc_test(data_family, label_family, data_manufacturer, label_manufacturer):
-    print("svc testing")
     print("testing family model...")
     svc_test_s(data_family, label_family, f_D_m, f_clf, f_pca)
     print("testing manufacturer model...")
@@ -230,11 +229,11 @@ def svc_test_s(data, label, D_m, clf, pca):
     data = data / 255.0
     print("centering data...")
     start_center = time.time()
-    D0_test = data.T - D_m
+    D0_test = data - D_m
     end_center = time.time()
     print("calculating pca...")
     start_pca = time.time()
-    A_test = pca.transform(D0_test.T)
+    A_test = pca.transform(D0_test)
     end_pca = time.time()
     print("predicting and calculating score...")
     start_predict_1 = time.time()
@@ -244,7 +243,7 @@ def svc_test_s(data, label, D_m, clf, pca):
     predictions = clf.predict(A_test)
     accuracy = accuracy_score(label, predictions)
     end_predict_2 = time.time()
-    print(f"Accuracy (score method): {scores:.2f}")
+    print(f"Accuracy (score method): {scores *100:.2f}%")
     print(f"time for accuracy score: {end_predict_1 - start_predict_1:.2f} seconds")
     print(f'Accuracy (accuracy_score method): {accuracy * 100:.2f}%')
     print(f"time for accuracy score: {end_predict_2 - start_predict_2:.2f} seconds")
