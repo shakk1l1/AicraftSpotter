@@ -1,5 +1,6 @@
 import os
 import cv2
+from PCA_SVC import load_svc_models
 from path import *
 from database import get_image_data
 import regex as re
@@ -8,10 +9,14 @@ import joblib
 size = None
 
 def load_models(model):
-    match model:
-        case "POD":
-            print("Loading POD models...")
-            load_POD_models()
+    if "svc" in model:
+        temporary_model = "svc"
+    else:
+        temporary_model = model
+    match temporary_model:
+        case "svc":
+            print("Finding SVC models...")
+            load_svc_models(model)
             trained = 'trained'
             
         case _:
@@ -34,12 +39,22 @@ def data_extraction(set):
         case _:
             print("Invalid set")
             return None
-    if input("resize image (for squared final images (needed for POD))? (y/n) ") == 'y':
-        size = int(input("define size of the image (x, x): "))
-        resizing = True
+    if size is None:
+        if input("resize image (for squared final images (needed for PCA/SVC))? (y/n) ") == 'y':
+            size = int(input("define size of the image (x, x) (0 for not resizing): "))
+            resizing = True
+        else:
+            resizing = False
     else:
-        resizing = False
-    print("extracting family data...")
+        print("size already defined (" + str(size) + ')')
+        if input("is it correct? (y/n) ") == 'y':
+            resizing = True
+        else:
+            size = int(input("define size of the image (x, x) (0 for not resizing): "))
+            if size == 0:
+                resizing = False
+            else:
+                resizing = True
     f_images = []
     f_labels = []
     with open(f_data_path, "rb") as f:
@@ -56,27 +71,16 @@ def data_extraction(set):
             # Assuming the first part is the image name and the rest are labels
             image_name = parts[0]
             family = parts[1].removesuffix('\n')
-            img = cv2.imread(os.path.join(path + '/images', image_name + '.jpg'), cv2.IMREAD_GRAYSCALE)
+            img = cv2.imread(os.path.join(path + '/images', image_name + '.jpg'))
             if img is None:
                 print(f"Error loading image: {image_name}")
                 continue
             values = get_image_data(image_name)
             x1, y1, x2, y2 = values[0], values[1], values[2], values[3]
-            if x2 - x1 < size or y2 - y1 < size:
-                print("\nimage too small (" + image_name + ")")
-                print("adjusting size...")
-                # Adjust the size of the image
-                # Calculate the new size
-                if x2 - x1 < size:
-                    x1 = int(x1 - ((size - (x2 - x1)) / 2))
-                    x2 = int(x2 + ((size - (x2 - x1)) / 2))
-                elif y2 - y1 < size:
-                    y1 = int(y1 - ((size - (y2 - y1)) / 2))
-                    y2 = int(y2 + ((size - (y2 - y1)) / 2))
             croped_img = img[y1 + 1:y2 + 1, x1 +1:x2 +1]
             if resizing:
                 # Adjust the size of the image
-                croped_img = cv2.resize(croped_img, (size, size))
+                croped_img = cv2.resize(croped_img, (size, size), interpolation=cv2.INTER_AREA)
             f_images.append(croped_img.flatten())
             f_labels.append(family)
             i += 1
@@ -85,7 +89,6 @@ def data_extraction(set):
     print("images: " + str(len(f_images)))
     print("labels: " + str(len(f_labels)))
 
-    print("extracting manufacturer data...")
     m_images = []
     m_labels = []
     with open(m_data_path, "rb") as f:
@@ -101,27 +104,15 @@ def data_extraction(set):
             parts = re.split(' ', line, maxsplit=1)
             # Assuming the first part is the image name and the rest are labels
             image_name = parts[0]
-            family = parts[1].removesuffix('\n')
+            manufacturer = parts[1].removesuffix('\n')
             img = cv2.imread(os.path.join(path + '/images', image_name + '.jpg'))
             values = get_image_data(image_name)
             x1, y1, x2, y2 = values[0], values[1], values[2], values[3]
-            if x2 - x1 < size or y2 - y1 < size:
-                print("\nimage too small (" + image_name + ")")
-                print(image_name)
-                print("adjusting size...")
-                # Adjust the size of the image
-                # Calculate the new size
-                if x2 - x1 < size:
-                    x1 = int(x1 - ((size - (x2 - x1)) / 2))
-                    x2 = int(x2 + ((size - (x2 - x1)) / 2))
-                if y2 - y1 < size:
-                    y1 = int(y1 - ((size - (y2 - y1)) / 2))
-                    y2 = int(y2 + ((size - (y2 - y1)) / 2))
             croped_img = img[y1 + 1:y2 + 1, x1 +1:x2 +1]
             if resizing:
-                croped_img = cv2.resize(croped_img, (size, size))
+                croped_img = cv2.resize(croped_img, (size, size), interpolation=cv2.INTER_AREA)
             m_images.append(croped_img.flatten())
-            m_labels.append(family)
+            m_labels.append(manufacturer)
             i += 1
     print("\nmanufacturer data extracted")
     print("images: " + str(len(m_images)))
@@ -133,6 +124,6 @@ def change_size():
     Change the size of the images
     """
     global size
-    size = joblib.load(os.path.join(path, 'models', 'size.pkl'))
+    size = joblib.load(os.path.join(path, 'models/svc', 'size.pkl'))
     print("Size changed to:", size)
     return size

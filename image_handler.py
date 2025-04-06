@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from path import path
 from database import *
 from data_extract import *
-from POD import *
+from PCA_SVC import *
 
 
 def get_image_path(image_number):

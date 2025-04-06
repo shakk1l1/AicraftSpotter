@@ -29,7 +29,7 @@ from command_general import *
 import joblib
 from database import *
 from data_extract import *
-from POD import *
+from PCA_SVC import *
 
 ## Main function
 def main():
