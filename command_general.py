@@ -120,7 +120,7 @@ def command(model, train_status):
         case "model":
             print("CAREFUL : this will reset the training")
             print("select the AI model: ")
-            print("     > svc (with pca) => scv")
+            print("     > svc (with pca) => svc")
             print("     > linear svc => lsvc")
             print("     > polynomial svc => psvc")
             model = input("=> ")

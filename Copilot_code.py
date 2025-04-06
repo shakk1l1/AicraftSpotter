@@ -6,6 +6,9 @@ from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
 import regex as re
 
+from database import get_image_data
+
+
 def load_images(image_dir, label_file):
     images = []
     labels = []
@@ -16,8 +19,11 @@ def load_images(image_dir, label_file):
             label = parts[1].removesuffix('\n')
             img_path = os.path.join(image_dir, parts[0] + '.jpg')
             img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
-            img = cv2.resize(img, (128, 128))  # Resize images to 128x128
-            images.append(img.flatten())
+            values = get_image_data(parts[0])
+            x1, y1, x2, y2 = values[0], values[1], values[2], values[3]
+            croped_img = img[y1 + 1:y2 + 1, x1 + 1:x2 + 1]
+            croped_img = cv2.resize(croped_img, (128, 128))  # Resize images to 128x128
+            images.append(croped_img.flatten())
             labels.append(label)
     return np.array(images), np.array(labels)
 

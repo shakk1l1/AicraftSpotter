@@ -6,8 +6,10 @@ from database import get_image_data
 import regex as re
 import numpy as np
 import joblib
+import time
 
 size = None
+gray = None
 
 def load_models(model):
     if "svc" in model:
@@ -27,7 +29,8 @@ def load_models(model):
             
 
 def data_extraction(set):
-    global size
+    start_time = time.time()
+    global size, gray
     match set:
         case "train":
             print("loading trainning data path...")
@@ -56,21 +59,30 @@ def data_extraction(set):
                 resizing = False
             else:
                 resizing = True
-    if input("gray scale the image? (y/n) ") == 'y':
-        gray = True
+    if gray is None:
+        if input("gray scale the image? (y/n) ") == 'y':
+            gray = True
+        else:
+            gray = False
     else:
-        gray = False
+        print("gray scaling already defined (" + str(gray) + ')')
+        if input("is it correct? (y/n) ") == 'y':
+            gray = gray
+        else:
+            if input("gray scale the image? (y/n) ") == 'y':
+                gray = True
+            else:
+                gray = False
+
     f_images = []
     f_labels = []
     with open(f_data_path, "rb") as f:
         num_lines = sum(1 for _ in f)
+    start_file_time_1 = time.time()
     with open(f_data_path, 'r') as file:
         i = 0
         for line in file:
-            if (round(i / num_lines, 1) * 100) % 2 == 0:
-                print('\r' + ' ' * 50, end='', flush=True)  # Clear the line
-                print('\r', end='', flush=True)  # Move the cursor back to the
-                print("exracting family data... " + str((i / num_lines) * 100) + "%", end='', flush=True)
+            start = time.time()
             # Process each line as needed
             parts = re.split(' ', line, maxsplit=1)
             # Assuming the first part is the image name and the rest are labels
@@ -89,30 +101,36 @@ def data_extraction(set):
             if resizing:
                 # Adjust the size of the image
                 croped_img = cv2.resize(croped_img, (size, size), interpolation=cv2.INTER_AREA)
-            if np.array(croped_img.flatten()).shape != (size * size * 3,):
+            if gray:
+                g = 1
+            else:
+                g = 3
+            if np.array(croped_img.flatten()).shape != (size * size * g,):
                 print(f"Error cropping image: {image_name}")
                 print(f"Expected shape: {(1, size * size * 3)}, but got: {np.array(croped_img.flatten()).shape}")
                 return None
             f_images.append(croped_img.flatten())
             f_labels.append(family)
+            if (round(i / num_lines, 1) * 100) % 2 == 0:
+                print('\r' + ' ' * 50, end='', flush=True)  # Clear the line
+                print('\r', end='', flush=True)  # Move the cursor back to the
+                print("exracting family data... " + str((i / num_lines) * 100) + "%" + f"  time per file: {time.time() - start:.2f} seconds", end='', flush=True)
             i += 1
+    end_file_time_1 = time.time()
 
     print("\nfamily data extracted")
     print("images: " + str(len(f_images)))
-    print("images shape: " + str(np.array(f_images).shape))
     print("labels: " + str(len(f_labels)))
 
     m_images = []
     m_labels = []
     with open(m_data_path, "rb") as f:
         num_lines = sum(1 for _ in f)
+    start_file_time_2 = time.time()
     with open(m_data_path, 'r') as file:
         i = 0
         for line in file:
-            if (round(i / num_lines, 1) * 100) % 2 == 0:
-                print('\r' + ' ' * 50, end='', flush=True)  # Clear the line
-                print('\r', end='', flush=True)  # Move the cursor back to the
-                print("exracting manufacturer data... " + str((i / num_lines) * 100) + "%", end='', flush=True)
+            start = time.time()
             # Process each line as needed
             parts = re.split(' ', line, maxsplit=1)
             # Assuming the first part is the image name and the rest are labels
@@ -130,18 +148,27 @@ def data_extraction(set):
                 return None
             m_images.append(croped_img.flatten())
             m_labels.append(manufacturer)
+            if (round(i / num_lines, 1) * 100) % 2 == 0:
+                print('\r' + ' ' * 50, end='', flush=True)  # Clear the line
+                print('\r', end='', flush=True)  # Move the cursor back to the
+                print("exracting manufacturer data... " + str((i / num_lines) * 100) + "%" + f"  time per file: {time.time() - start:.2f} seconds", end='', flush=True)
             i += 1
     print("\nmanufacturer data extracted")
     print("images: " + str(len(m_images)))
-    print("images shape: " + str(np.array(m_images).shape))
     print("labels: " + str(len(m_labels)))
+
+    end_file_time_2 = time.time()
+    print(f"Time taken to extract family data: {end_file_time_1 - start_file_time_1:.2f} seconds")
+    print(f"Time taken to extract manufacturer data: {end_file_time_2 - start_file_time_2:.2f} seconds")
+    print(f"Total time taken: {end_file_time_2 - start_time:.2f} seconds")
     return f_images, f_labels, m_images, m_labels
 
-def change_size():
+def change_size(model):
     """
     Change the size of the images
     """
     global size
-    size = joblib.load(os.path.join(path, 'models/svc', 'size.pkl'))
+    size = joblib.load(os.path.join(path, 'models/' + model, 'size.pkl'))
+    gray = joblib.load(os.path.join(path, 'models/' + model, 'gray.pkl'))
     print("Size changed to:", size)
     return size
