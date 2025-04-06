@@ -71,6 +71,8 @@ def svc_train_s(data, label, model):
     encoded_labels = le.fit_transform(label)
     # centering
     data_train = np.array(data)
+    print("normalizing data...")
+    data_train = data_train / 255.0
     print("transposing data...")
     D_train = data_train.T
     print("calculating mean...")
@@ -81,7 +83,8 @@ def svc_train_s(data, label, model):
     # svd
     print("calculating pca...")
     # pca
-    pca = PCA()
+    n_components = int(input("number of components for pca: "))
+    pca = PCA(n_components=n_components)
     A = pca.fit_transform(D0_train.T)
 
     if input("plot eigenvalues distribution? (y/n) ") == 'y':
@@ -129,6 +132,8 @@ def svc_predict(image_name):
     print("d_img shape: ", d_img.shape)
 
     print("predicting family...")
+    print("normalizing data...")
+    d_img = d_img / 255.0
     # centering
     print("centering data...")
     d_img_c = d_img.T - f_D_m
@@ -170,6 +175,9 @@ def svc_test(data_family, label_family, data_manufacturer, label_manufacturer):
 def svc_test_s(data, label, D_m, clf, pca):
     print("centering data...")
     data = np.array(data)
+    print("normalizing data...")
+    data = data / 255.0
+    print("centering data...")
     D0_test = data.T - D_m
     print("calculating pca...")
     A_test = pca.transform(D0_test.T)

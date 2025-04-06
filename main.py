@@ -66,7 +66,6 @@ def main():
     while on:
         on, method, train_status = command(method, train_status)
 
-
 if __name__ == '__main__':
     plt.close()
     main()

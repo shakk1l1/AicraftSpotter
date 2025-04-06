@@ -4,6 +4,7 @@ from PCA_SVC import load_svc_models
 from path import *
 from database import get_image_data
 import regex as re
+import numpy as np
 import joblib
 
 size = None
@@ -30,8 +31,8 @@ def data_extraction(set):
     match set:
         case "train":
             print("loading trainning data path...")
-            f_data_path = os.path.join(path, "images_family_train.txt")
-            m_data_path = os.path.join(path, "images_manufacturer_train.txt")
+            f_data_path = os.path.join(path, "images_family_trainval.txt")
+            m_data_path = os.path.join(path, "images_manufacturer_trainval.txt")
         case "test":
             print("loading trainning data path...")
             f_data_path = os.path.join(path, "images_family_test.txt")
@@ -55,6 +56,10 @@ def data_extraction(set):
                 resizing = False
             else:
                 resizing = True
+    if input("gray scale the image? (y/n) ") == 'y':
+        gray = True
+    else:
+        gray = False
     f_images = []
     f_labels = []
     with open(f_data_path, "rb") as f:
@@ -71,7 +76,10 @@ def data_extraction(set):
             # Assuming the first part is the image name and the rest are labels
             image_name = parts[0]
             family = parts[1].removesuffix('\n')
-            img = cv2.imread(os.path.join(path + '/images', image_name + '.jpg'))
+            if gray:
+                img = cv2.imread(os.path.join(path + '/images', image_name + '.jpg'), cv2.IMREAD_GRAYSCALE)
+            else:
+                img = cv2.imread(os.path.join(path + '/images', image_name + '.jpg'))
             if img is None:
                 print(f"Error loading image: {image_name}")
                 continue
@@ -81,12 +89,17 @@ def data_extraction(set):
             if resizing:
                 # Adjust the size of the image
                 croped_img = cv2.resize(croped_img, (size, size), interpolation=cv2.INTER_AREA)
+            if np.array(croped_img.flatten()).shape != (size * size * 3,):
+                print(f"Error cropping image: {image_name}")
+                print(f"Expected shape: {(1, size * size * 3)}, but got: {np.array(croped_img.flatten()).shape}")
+                return None
             f_images.append(croped_img.flatten())
             f_labels.append(family)
             i += 1
 
     print("\nfamily data extracted")
     print("images: " + str(len(f_images)))
+    print("images shape: " + str(np.array(f_images).shape))
     print("labels: " + str(len(f_labels)))
 
     m_images = []
@@ -111,11 +124,16 @@ def data_extraction(set):
             croped_img = img[y1 + 1:y2 + 1, x1 +1:x2 +1]
             if resizing:
                 croped_img = cv2.resize(croped_img, (size, size), interpolation=cv2.INTER_AREA)
+            if np.array(croped_img.flatten()).shape != (size * size * 3,):
+                print(f"Error cropping image: {image_name}")
+                print(f"Expected shape: {(1, size * size * 3)}, but got: {np.array(croped_img.flatten()).shape}")
+                return None
             m_images.append(croped_img.flatten())
             m_labels.append(manufacturer)
             i += 1
     print("\nmanufacturer data extracted")
     print("images: " + str(len(m_images)))
+    print("images shape: " + str(np.array(m_images).shape))
     print("labels: " + str(len(m_labels)))
     return f_images, f_labels, m_images, m_labels
 
