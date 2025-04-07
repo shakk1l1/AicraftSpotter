@@ -80,10 +80,11 @@ def delete_database():
 
 def get_image_data(image_name):
     result = db.fetchone('''SELECT value1, value2, value3, value4 FROM image_data WHERE image_name = ?''', (image_name,))
-    if result:
+    if result is not None:
         return result
     else:
         print(f"No data found for image name: {image_name}")
+        print("not cropping the image")
         return [0, 0, 0, 0]
 
 def create_table_values():

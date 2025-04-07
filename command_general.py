@@ -1,3 +1,4 @@
+## imports
 import matplotlib.pyplot as plt
 import os
 from path import *
@@ -41,17 +42,50 @@ def commandpath():
             print("unknown command")
             print("use help for commands list")
             commandpath()
-
     return None
+
+def command_model(actual_model=None, actual_train_status=None):
+    # Change the model
+    print("CAREFUL : this will reset the training")
+    print("select the AI model: ")
+    print("     > svc (with pca) => svc")
+    print("     > linear svc => lsvc")
+    print("     > polynomial svc => psvc")
+    model = input("=> ")
+    print("model selected: " + model)
+    print("checking if model is valid and already trained...")
+    if "svc" in model:
+        temporary_model = "svc"
+    else:
+        temporary_model = model
+    match temporary_model:
+        case "svc":
+            from PCA_SVC import f_D_m, m_D_m
+            if f_D_m is None or m_D_m is None:
+                print("model not trained")
+                train_status = "not trained"
+            else:
+                print("model already trained")
+                print("you can already use it")
+                train_status = "trained"
+        case _:
+            print("unknown model")
+            model = actual_model
+            train_status = actual_train_status
+            print("use help for commands list")
+    return model, train_status
 
 def command(model, train_status):
     """
-    Handle user commands for posting images to Instagram.
+    Handle user commands for the command line interface.
     """
+    # Get the command from the user
     c = input('('+ model + '/' + train_status +')' + '>> ')
     on = True
+
     match c:
         case 'help':
+            # Display the list of commands
             print("List of commands")
             print('     help: list of commands')
             print('     esc: escape')
@@ -65,8 +99,13 @@ def command(model, train_status):
             print('     predict: predict specific image')
             pass
         case "esc":
+            # Escape the program
+            print("Exiting...")
             on = False
+            pass
+
         case "show":
+            # Show the image
             image_number = input("image number: ")
             if image_number == 'image not found':
                 print('maybe an typo error')
@@ -74,14 +113,20 @@ def command(model, train_status):
             else:
                 show_image(image_number)
             pass
+
         case "close":
+            # Close the image
             plt.close()
             print("Image closed")
             pass
+
         case "path":
+            # Handle path-related commands
             commandpath()
             pass
+
         case "train":
+            # Train the model
             if model is None:
                 print("No model selected, please select a model using model command")
             else:
@@ -104,7 +149,9 @@ def command(model, train_status):
                         svc_train(f_train_data, f_train_label, m_train_data, m_train_label, model)
                         train_status = "trained"
             pass
+
         case "test":
+            # Test the model
             print("extracting test data...")
             # Load the test data
             f_test_data, f_test_label, m_test_data, m_test_label = data_extraction("test")
@@ -117,37 +164,16 @@ def command(model, train_status):
                     print("Testing with svc...")
                     svc_test(f_test_data, f_test_label, m_test_data, m_test_label)
             pass
-        case "model":
-            print("CAREFUL : this will reset the training")
-            print("select the AI model: ")
-            print("     > svc (with pca) => svc")
-            print("     > linear svc => lsvc")
-            print("     > polynomial svc => psvc")
-            model = input("=> ")
-            print("model selected: " + model)
-            print("checking if model is valid and already trained...")
 
-            if "svc" in model:
-                temporary_model = "svc"
-            else:
-                temporary_model = model
-            match temporary_model:
-                case "svc":
-                    from PCA_SVC import f_D_m, m_D_m
-                    if f_D_m is None or m_D_m is None:
-                        print("model not trained")
-                        train_status = "not trained"
-                    else:
-                        print("model already trained")
-                        print("you can already use it")
-                        train_status = "trained"
-                case _:
-                    print("unknown model")
-                    print("use help for commands list")
+        case "model":
+            model, train_status = command_model(model, train_status)
             pass
+
         case "predict":
-            if train_status == "not trained":
-                print("No training done, please train the model first")
+
+            # Predict a specific image
+            if train_status == "not trained" or model is None:
+                print("No model selected or training done, please select and train a model")
             else:
                 image_number = input("image number: ")
                 if (image_number + '.jpg') in image_list:
@@ -158,12 +184,15 @@ def command(model, train_status):
                     print("try again")
             pass
         case "load":
+            # Load the model
             train_status = load_models(model) 
             pass
         case "backdoor":
+            # Backdoor command (for testing purposes)
             print("what is going on")
             pass
         case _:
+            # Handle unknown commands
             print("unknown command")
             print("use help for commands list")
             pass
