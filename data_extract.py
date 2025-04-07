@@ -28,7 +28,7 @@ def load_models(model):
         print("Please train the model first")
         return 'not trained'
 
-    # svc are have the same load function
+    # svc have the same load function
     if "svc" in model:
         temporary_model = "svc"
     else:
