@@ -173,6 +173,7 @@ def svc_train_s(data, label, model, spca):
         end_pca = time.time()
     else:
         A = D0_train
+        pca = None
 
     if input("plot eigenvalues distribution? (y/n) ") == 'y':
         # Plot the distribution of the eigenvalues
@@ -262,10 +263,14 @@ def svc_predict(image_name):
     end_center_f = time.time()
 
     # pca transformation
-    print("calculating pca...")
-    start_pca_f = time.time()
-    A_img = f_pca.transform(d_img_c)
-    end_pca_f = time.time()
+    if f_pca is None:
+        print("no pca used")
+        A_img = d_img_c
+    else:
+        print("calculating pca...")
+        start_pca_f = time.time()
+        A_img = f_pca.transform(d_img_c)
+        end_pca_f = time.time()
 
     # Predicting
     print("predicting...")
@@ -282,10 +287,14 @@ def svc_predict(image_name):
     d_img_c = d_img_array - m_D_m
     end_center_m = time.time()
     # pca
-    print("calculating pca...")
-    start_pca_m = time.time()
-    A_img = m_pca.transform(d_img_c)
-    end_pca_m = time.time()
+    if m_pca is None:
+        print("no pca used")
+        A_img = d_img_c
+    else:
+        print("calculating pca...")
+        start_pca_m = time.time()
+        A_img = m_pca.transform(d_img_c)
+        end_pca_m = time.time()
     # Predicting
     print("predicting...")
     start_predict_m = time.time()
@@ -343,10 +352,14 @@ def svc_test_s(data, label, D_m, clf, pca):
     D0_test = data - D_m
     end_center = time.time()
 
-    print("calculating pca...")
-    start_pca = time.time()
-    A_test = pca.transform(D0_test)
-    end_pca = time.time()
+    if pca is None:
+        print("no pca used")
+        A_test = D0_test
+    else:
+        print("calculating pca...")
+        start_pca = time.time()
+        A_test = pca.transform(D0_test)
+        end_pca = time.time()
 
     print("predicting and calculating score...")
     # two methods to calculate the score
@@ -367,5 +380,6 @@ def svc_test_s(data, label, D_m, clf, pca):
     #print(f'Accuracy (accuracy_score method): {accuracy * 100:.2f}%')
     #print(f"time for accuracy score: {end_predict_2 - start_predict_2:.2f} seconds")
     print(f"centering time: {end_center - start_center:.2f} seconds")
-    print(f"pca time: {end_pca - start_pca:.2f} seconds")
+    if pca is not None:
+        print(f"pca time: {end_pca - start_pca:.2f} seconds")
     print(f"total testing time: {end_predict_2 - start:.2f} seconds")
