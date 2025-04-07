@@ -3,8 +3,8 @@ import os
 import cv2
 from sklearn.decomposition import PCA
 from sklearn.metrics import accuracy_score
-from sklearn.svm import SVC
 from database import get_image_data
+from sklearn.linear_model import Lasso, LinearRegression, RidgeClassifier, RidgeClassifierCV, LassoCV
 from path import *
 import numpy as np
 import matplotlib.pyplot as plt
@@ -25,9 +25,9 @@ m_clf = None
 m_le = None
 m_encoded_labels = None
 
-def load_svc_models(model):
+def load_cv_models(model):
     """
-    Load the SVC models
+    Load the cv models
     :param model:
     :return:
     """
@@ -54,9 +54,9 @@ def load_svc_models(model):
     change_size(model)
     print("Models loaded")
 
-def svc_train(data_family, label_family, data_manufacturer, label_manufacturer, model):
+def cv_train(data_family, label_family, data_manufacturer, label_manufacturer, model):
     """
-    Train the two SVC models
+    Train the two cv models
     :param data_family:
     :param label_family:
     :param data_manufacturer:
@@ -69,7 +69,7 @@ def svc_train(data_family, label_family, data_manufacturer, label_manufacturer, 
     global f_D_m, f_pca, f_clf, f_le
     global m_D_m, m_pca, m_clf, m_le
 
-    print("svc training")
+    print("cv training")
 
     if input("use PCA? (y/n) ") == 'y':
         if input("apply the same PCA on the two data sets? (y/n) ") == 'y':
@@ -78,11 +78,12 @@ def svc_train(data_family, label_family, data_manufacturer, label_manufacturer, 
             spca = None
     else:
         spca = False
+    cv = int(input("selcect number of fold for cross validation: "))
 
     print("training family model...")
-    f_D_m, f_pca, f_le, f_clf, f_encoded_labels = svc_train_s(data_family, label_family, model, spca)
+    f_D_m, f_pca, f_le, f_clf, f_encoded_labels = cv_train_s(data_family, label_family, model, spca, cv)
     print("training manufacturer model...")
-    m_D_m, m_pca, m_le, m_clf, m_encoded_labels = svc_train_s(data_manufacturer, label_manufacturer, model, spca)
+    m_D_m, m_pca, m_le, m_clf, m_encoded_labels = cv_train_s(data_manufacturer, label_manufacturer, model, spca, cv)
     
     # Save the models
     newpath = os.path.join(path, 'models/' + model)
@@ -124,9 +125,9 @@ def n_components_selecter():
     # else it must be a % of the image data to keep
     return n_components
 
-def svc_train_s(data, label, model, spca):
+def cv_train_s(data, label, model, spca, coefficient=None):
     """
-    train the SVC model
+    train the cv model
     :param data:
     :param label:
     :param model:
@@ -193,22 +194,21 @@ def svc_train_s(data, label, model, spca):
         plt.colorbar(im)
         plt.show()
 
-    # training SVC
-    print("training SVC...")
-    # variance of svc possible models
+    # training cv
+    print("training cv...")
+    # variance of cv possible models
     # probability=True is needed for the predict_proba method and have the probability of the prediction
     match model:
-        case "svc":
-            clf = SVC(probability=True, verbose=True)
-        case "lsvc":
-            clf = SVC(kernel='linear', probability=True, verbose=True)
-        case "psvc":
-            degree = int(input("degree of the polynomial kernel: "))
-            clf = SVC(kernel='poly', degree=degree, probability=True, verbose=True)
-    start_svc = time.time()
-    # train the SVC
+        case "cv-lasso":
+            clf = LassoCV(cv=coefficient, random_state=0, max_iter=10000)
+            label = le.transform(label)
+        case "cv-ridge":
+            clf = RidgeClassifierCV(cv=coefficient, max_iter=10000)
+            le = None
+    start_cv = time.time()
+    # train the cv
     clf.fit(A, label)
-    end_svc = time.time()
+    end_cv = time.time()
 
     # print the time taken for each step
     print("training complete")
@@ -216,11 +216,11 @@ def svc_train_s(data, label, model, spca):
     print(f"centering time: {end_center - start_center:.2f} seconds")
     if spca is not False:
         print(f"pca time: {end_pca - start_pca:.2f} seconds")
-    print(f"svc time: {end_svc - start_svc:.2f} seconds")
-    print(f"total training time: {end_svc - start_training:.2f} seconds")
+    print(f"cv time: {end_cv - start_cv:.2f} seconds")
+    print(f"total training time: {end_cv - start_training:.2f} seconds")
     return D_m, pca, le, clf, encoded_labels
 
-def svc_predict(image_name):
+def cv_predict(image_name):
     """
     Predict the family and manufacturer of an image
     :param image_name:
@@ -276,10 +276,10 @@ def svc_predict(image_name):
     print("predicting...")
     start_predict_f = time.time()
     pred = f_clf.predict(A_img)
-    pred_proba = f_clf.predict_proba(A_img)
     end_predict_f = time.time()
-    pred_percentage = np.max(pred_proba) * 100
-    print(f"Predicted family: {pred[0]} ({pred_percentage:.2f}%)")
+    if f_le is not None:
+        pred = f_le.inverse_transform(pred.astype(int))
+    print(f"Predicted family: {pred[0]}")
 
     print("predicting manufacturer...")
     # centering
@@ -299,12 +299,11 @@ def svc_predict(image_name):
     print("predicting...")
     start_predict_m = time.time()
     pred = m_clf.predict(A_img)
-    pred_proba = m_clf.predict_proba(A_img)
     end_predict_m = time.time()
-    pred_percentage = np.max(pred_proba) * 100
-
+    if m_le is not None:
+        pred = m_le.inverse_transform(pred.astype(int))
+    print(f"Predicted manufacturer: {pred[0]}")
     # print the time taken for each step
-    print(f"Predicted manufacturer: {pred[0]} ({pred_percentage:.2f}%)")
     print(f"extracting time: {end_extract - start_extract:.2f} seconds")
     print(f"family centering time: {end_center_f - start_center_f:.2f} seconds")
     print(f"family pca time: {end_pca_f - start_pca_f:.2f} seconds")
@@ -315,9 +314,9 @@ def svc_predict(image_name):
     print(f"total predicting time: {end_predict_m - start_predict:.2f} seconds")
     return None
 
-def svc_test(data_family, label_family, data_manufacturer, label_manufacturer):
+def cv_test(data_family, label_family, data_manufacturer, label_manufacturer):
     """
-    Test the SVC models for family and manufacturer
+    Test the cv models for family and manufacturer
     :param data_family:
     :param label_family:
     :param data_manufacturer:
@@ -325,13 +324,13 @@ def svc_test(data_family, label_family, data_manufacturer, label_manufacturer):
     :return:
     """
     print("testing family model...")
-    svc_test_s(data_family, label_family, f_D_m, f_clf, f_pca)
+    cv_test_s(data_family, label_family, f_D_m, f_clf, f_pca, f_le)
     print("testing manufacturer model...")
-    svc_test_s(data_manufacturer, label_manufacturer, m_D_m, m_clf, m_pca)
+    cv_test_s(data_manufacturer, label_manufacturer, m_D_m, m_clf, m_pca, m_le)
 
-def svc_test_s(data, label, D_m, clf, pca):
+def cv_test_s(data, label, D_m, clf, pca, le):
     """
-    Test the SVC model
+    Test the cv model
     :param data:
     :param label:
     :param D_m:
@@ -361,22 +360,28 @@ def svc_test_s(data, label, D_m, clf, pca):
         A_test = pca.transform(D0_test)
         end_pca = time.time()
 
+    if le is not None:
+        print("label encoding...")
+        label = le.transform(label)
+
     print("predicting and calculating score...")
     # two methods to calculate the score
     # 1st method
-    start_predict_1 = time.time()
-    scores = clf.score(A_test, label)
-    end_predict_1 = time.time()
+    # start_predict_1 = time.time()
+    # scores = clf.score(A_test, label)
+    # end_predict_1 = time.time()
 
     # 2nd method
-    #start_predict_2 = time.time()
-    #predictions = clf.predict(A_test)
-    #accuracy = accuracy_score(label, predictions)
+    start_predict_2 = time.time()
+    predictions = clf.predict(A_test)
+    if le is not None:
+        predictions = le.inverse_transform(predictions.astype(int))
+    accuracy = accuracy_score(label, predictions)
 
     end_predict_2 = time.time()
 
-    print(f"Accuracy: {scores *100:.2f}%")
-    print(f"time for accuracy score: {end_predict_1 - start_predict_1:.2f} seconds")
+    print(f"Accuracy: {accuracy *100:.2f}%")
+    print(f"time for accuracy score: {end_predict_2 - start_predict_2:.2f} seconds")
     #print(f'Accuracy (accuracy_score method): {accuracy * 100:.2f}%')
     #print(f"time for accuracy score: {end_predict_2 - start_predict_2:.2f} seconds")
     print(f"centering time: {end_center - start_center:.2f} seconds")

@@ -6,6 +6,7 @@ from database import *
 from data_extract import data_extraction
 from PCA_SVC import *
 from lreg import *
+from cv import *
 from image_handler import *
 from main import image_list
 
@@ -54,11 +55,16 @@ def command_model(actual_model=None, actual_train_status=None):
     print("     > svc => svc")
     print("     > linear svc => lsvc")
     print("     > polynomial svc => psvc")
-    print("     > lasso => lreg-lasso (WIP)")
-    print("     > ridge => lreg-ridge (WIP)")
-    print("     > Least-Squares regression => lreg-lsr (WIP)")
-    print("------------neural networks------------")
+    print("     > lasso => lreg-lasso (x)")
+    print("     > ridge => lreg-ridge")
+    print("     > Least-Squares regression => lreg-lsr (x)")
+    print("----------(Cross Validation)----------")
+    print("     > cross validation ridge => cv-ridge")
+    print("     > cross validation lasso => cv-lasso (x)")
+    print("-----------Neural Network-------------")
     print("     > WIP")
+    print("WIP = Work In Progress")
+    print("x = not working well as it use continuous data prediction, i.e. it is not a classification model")
     model = input("=> ")
     print("model selected: " + model)
     print("checking if model is valid and already trained...")
@@ -66,6 +72,8 @@ def command_model(actual_model=None, actual_train_status=None):
         temporary_model = "svc"
     elif "lreg" in model:
         temporary_model = "lreg"
+    elif "cv" in model:
+        temporary_model = "cv"
     else:
         temporary_model = model
 
@@ -81,6 +89,15 @@ def command_model(actual_model=None, actual_train_status=None):
                 train_status = "trained"
         case "lreg":
             from lreg import f_D_m, m_D_m
+            if f_D_m is None or m_D_m is None:
+                print("model not trained")
+                train_status = "not trained"
+            else:
+                print("model already trained")
+                print("you can already use it")
+                train_status = "trained"
+        case "cv":
+            from cv import f_D_m, m_D_m
             if f_D_m is None or m_D_m is None:
                 print("model not trained")
                 train_status = "not trained"
@@ -168,6 +185,28 @@ def command(model, train_status):
                         print("Training with psvc")
                         svc_train(f_train_data, f_train_label, m_train_data, m_train_label, model)
                         train_status = "trained"
+                    case "lreg-lasso":
+                        print("Training with lasso")
+                        lreg_train(f_train_data, f_train_label, m_train_data, m_train_label, model)
+                        train_status = "trained"
+                    case "lreg-lsr":
+                        print("training with Least-Squares regression")
+                        lreg_train(f_train_data, f_train_label, m_train_data, m_train_label, model)
+                        train_status = "trained"
+                    case "lreg-ridge":
+                        print("training with ridge")
+                        lreg_train(f_train_data, f_train_label, m_train_data, m_train_label, model)
+                        train_status = "trained"
+                    case "cv-ridge":
+                        print("training with cross validation ridge")
+                        cv_train(f_train_data, f_train_label, m_train_data, m_train_label, model)
+                        train_status = "trained"
+                    case "cv-lasso":
+                        print("training with cross validation lasso")
+                        cv_train(f_train_data, f_train_label, m_train_data, m_train_label, model)
+                        train_status = "trained"
+                    case _:
+                        print("unknown model")
             pass
 
         case "test":
@@ -177,12 +216,22 @@ def command(model, train_status):
             f_test_data, f_test_label, m_test_data, m_test_label = data_extraction("test")
             if "svc" in model:
                 temporary_model = "svc"
+            elif "lreg" in model:
+                temporary_model = "lreg"
+            elif "cv" in model:
+                temporary_model = "cv"
             else:
                 temporary_model = model
             match temporary_model:
                 case "svc":
                     print("Testing with svc...")
                     svc_test(f_test_data, f_test_label, m_test_data, m_test_label)
+                case "lreg":
+                    print("Testing with linear regression...")
+                    lreg_test(f_test_data, f_test_label, m_test_data, m_test_label)
+                case "cv":
+                    print("Testing with cross validation...")
+                    cv_test(f_test_data, f_test_label, m_test_data, m_test_label)
             pass
 
         case "model":
@@ -197,7 +246,26 @@ def command(model, train_status):
             else:
                 image_number = input("image number: ")
                 if (image_number + '.jpg') in image_list:
-                    svc_predict(image_number)
+                    if "svc" in model:
+                        temporary_model = "svc"
+                    elif "lreg" in model:
+                        temporary_model = "lreg"
+                    elif "cv" in model:
+                        temporary_model = "cv"
+                    else:
+                        temporary_model = model
+                    match temporary_model:
+                        case "svc":
+                            print("Predicting with svc...")
+                            svc_predict(image_number)
+                        case "lreg":
+                            print("Predicting with linear regression...")
+                            lreg_predict(image_number)
+                        case "cv":
+                            print("Predicting with cross validation...")
+                            cv_predict(image_number)
+                        case _:
+                            print("unknown model")
                 else:
                     print("image not found")
                     print("maybe an typo error")

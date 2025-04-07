@@ -4,8 +4,7 @@ import cv2
 from sklearn.decomposition import PCA
 from sklearn.metrics import accuracy_score
 from database import get_image_data
-from sklearn.linear_model import Lasso, LinearRegression
-from sklearn.linear_model import Ridge
+from sklearn.linear_model import Lasso, LinearRegression, RidgeClassifier
 from path import *
 import numpy as np
 import matplotlib.pyplot as plt
@@ -80,10 +79,15 @@ def lreg_train(data_family, label_family, data_manufacturer, label_manufacturer,
     else:
         spca = False
 
+    if "lsr" in model:
+        alpha = 0
+    else:
+        alpha = float(input("choose alpha coefficient for the training method: "))
+
     print("training family model...")
-    f_D_m, f_pca, f_le, f_clf, f_encoded_labels = lreg_train_s(data_family, label_family, model, spca)
+    f_D_m, f_pca, f_le, f_clf, f_encoded_labels = lreg_train_s(data_family, label_family, model, spca, alpha)
     print("training manufacturer model...")
-    m_D_m, m_pca, m_le, m_clf, m_encoded_labels = lreg_train_s(data_manufacturer, label_manufacturer, model, spca)
+    m_D_m, m_pca, m_le, m_clf, m_encoded_labels = lreg_train_s(data_manufacturer, label_manufacturer, model, spca, alpha)
     
     # Save the models
     newpath = os.path.join(path, 'models/' + model)
@@ -100,6 +104,7 @@ def lreg_train(data_family, label_family, data_manufacturer, label_manufacturer,
     joblib.dump(m_D_m, os.path.join(path, 'models/' + model, 'manufacturer_mean.pkl'))
     joblib.dump(f_pca, os.path.join(path, 'models/' + model, 'family_pca.pkl'))
     joblib.dump(m_pca, os.path.join(path, 'models/' + model, 'manufacturer_pca.pkl'))
+    joblib.dump(alpha, os.path.join(path, 'models/' + model, 'alpha.pkl'))
 
     # import last version of size and gray
     from data_extract import size, gray
@@ -125,7 +130,7 @@ def n_components_selecter():
     # else it must be a % of the image data to keep
     return n_components
 
-def lreg_train_s(data, label, model, spca):
+def lreg_train_s(data, label, model, spca, coefficient=None):
     """
     train the lreg model
     :param data:
@@ -200,12 +205,14 @@ def lreg_train_s(data, label, model, spca):
     # probability=True is needed for the predict_proba method and have the probability of the prediction
     match model:
         case "lreg-lasso":
-            clf = Lasso()
+            clf = Lasso(alpha=coefficient)
+            label = le.fit_transform(label)
         case "lreg-ridge":
-            clf = Ridge()
+            clf = RidgeClassifier(alpha=coefficient)
+            le = None
         case "lreg-lsr":
-            degree = int(input("degree of the polynomial kernel: "))
             clf = LinearRegression()
+            label = le.fit_transform(label)
     start_lreg = time.time()
     # train the lreg
     clf.fit(A, label)
@@ -278,6 +285,8 @@ def lreg_predict(image_name):
     start_predict_f = time.time()
     pred = f_clf.predict(A_img)
     end_predict_f = time.time()
+    if f_le is not None:
+        pred = f_le.inverse_transform(pred.astype(int))
     print(f"Predicted family: {pred[0]}")
 
     print("predicting manufacturer...")
@@ -299,9 +308,11 @@ def lreg_predict(image_name):
     start_predict_m = time.time()
     pred = m_clf.predict(A_img)
     end_predict_m = time.time()
+    if m_le is not None:
+        pred = m_le.inverse_transform(pred.astype(int))
+    print(f"Predicted manufacturer: {pred[0]}")
 
     # print the time taken for each step
-    print(f"Predicted manufacturer: {pred[0]}")
     print(f"extracting time: {end_extract - start_extract:.2f} seconds")
     print(f"family centering time: {end_center_f - start_center_f:.2f} seconds")
     print(f"family pca time: {end_pca_f - start_pca_f:.2f} seconds")
@@ -322,11 +333,11 @@ def lreg_test(data_family, label_family, data_manufacturer, label_manufacturer):
     :return:
     """
     print("testing family model...")
-    lreg_test_s(data_family, label_family, f_D_m, f_clf, f_pca)
+    lreg_test_s(data_family, label_family, f_D_m, f_clf, f_pca, f_le)
     print("testing manufacturer model...")
-    lreg_test_s(data_manufacturer, label_manufacturer, m_D_m, m_clf, m_pca)
+    lreg_test_s(data_manufacturer, label_manufacturer, m_D_m, m_clf, m_pca, m_le)
 
-def lreg_test_s(data, label, D_m, clf, pca):
+def lreg_test_s(data, label, D_m, clf, pca, le):
     """
     Test the lreg model
     :param data:
@@ -361,19 +372,21 @@ def lreg_test_s(data, label, D_m, clf, pca):
     print("predicting and calculating score...")
     # two methods to calculate the score
     # 1st method
-    start_predict_1 = time.time()
-    scores = clf.score(A_test, label)
-    end_predict_1 = time.time()
+    # start_predict_1 = time.time()
+    # scores = clf.score(A_test, label)
+    # end_predict_1 = time.time()
 
     # 2nd method
-    #start_predict_2 = time.time()
-    #predictions = clf.predict(A_test)
-    #accuracy = accuracy_score(label, predictions)
+    start_predict_2 = time.time()
+    predictions = clf.predict(A_test)
+    if le is not None:
+        predictions = le.inverse_transform(predictions.astype(int))
+    accuracy = accuracy_score(label, predictions)
 
     end_predict_2 = time.time()
 
-    print(f"Accuracy: {scores *100:.2f}%")
-    print(f"time for accuracy score: {end_predict_1 - start_predict_1:.2f} seconds")
+    print(f"Accuracy: {accuracy *100:.2f}%")
+    print(f"time for accuracy score: {end_predict_2 - start_predict_2:.2f} seconds")
     #print(f'Accuracy (accuracy_score method): {accuracy * 100:.2f}%')
     #print(f"time for accuracy score: {end_predict_2 - start_predict_2:.2f} seconds")
     print(f"centering time: {end_center - start_center:.2f} seconds")

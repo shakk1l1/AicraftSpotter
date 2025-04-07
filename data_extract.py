@@ -2,6 +2,8 @@
 import os
 import cv2
 from PCA_SVC import load_svc_models
+from lreg import load_lreg_models
+from cv import load_cv_models
 from path import *
 from database import get_image_data
 import regex as re
@@ -31,6 +33,10 @@ def load_models(model):
     # svc have the same load function
     if "svc" in model:
         temporary_model = "svc"
+    elif "lreg" in model:
+        temporary_model = "lreg"
+    elif "cv" in model:
+        temporary_model = "cv"
     else:
         temporary_model = model
 
@@ -38,6 +44,14 @@ def load_models(model):
         case "svc":
             print("Finding SVC models...")
             load_svc_models(model)
+            trained = 'trained'
+        case "lreg":
+            print("Finding LREG models...")
+            load_lreg_models(model)
+            trained = 'trained'
+        case "cv":
+            print("Finding CV models...")
+            load_cv_models(model)
             trained = 'trained'
             
         case _:
