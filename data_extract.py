@@ -124,10 +124,6 @@ def file_extractor(data_path, set, resizing, gray):
                 print(f"Error cropping image: {image_name}")
                 print(f"Expected shape: {(1, size * size * 3)}, but got: {np.array(croped_img.flatten()).shape}")
                 return None
-            if np.array(croped_img.flatten()).shape != (size * size * 3,):
-                print(f"Error cropping image: {image_name}")
-                print(f"Expected shape: {(1, size * size * 3)}, but got: {np.array(croped_img.flatten()).shape}")
-                return None
             m_images.append(croped_img.flatten())
             m_labels.append(manufacturer)
             if (round(i / num_lines, 1) * 100) % 2 == 0:
@@ -136,6 +132,7 @@ def file_extractor(data_path, set, resizing, gray):
                 print("exracting " + set + " data... " + str((i / num_lines) * 100) + "%" + f"  time per file: {time.time() - start:.2f} seconds", end='', flush=True)
             i += 1
     return m_images, m_labels
+
 def change_size(model):
     """
     Change the size of the images
