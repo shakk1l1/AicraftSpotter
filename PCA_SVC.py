@@ -71,10 +71,13 @@ def svc_train(data_family, label_family, data_manufacturer, label_manufacturer, 
 
     print("svc training")
 
-    if input("apply the same PCA on the two data sets? (y/n) ") == 'y':
-        spca = n_components_selecter()
+    if input("use PCA? (y/n) ") == 'y':
+        if input("apply the same PCA on the two data sets? (y/n) ") == 'y':
+            spca = n_components_selecter()
+        else:
+            spca = None
     else:
-        spca = None
+        spca = False
 
     print("training family model...")
     f_D_m, f_pca, f_le, f_clf, f_encoded_labels = svc_train_s(data_family, label_family, model, spca)
@@ -111,7 +114,7 @@ def n_components_selecter():
     select the number of components for PCA
     :return:
     """
-    n_components = float(input("number of components for pca: "))
+    n_components = float(input("number of components for pca (0 for no pca): "))
     if n_components > 1: # if n_components is an integer it must be the number of components
         try:
             n_components = int(n_components)
@@ -155,16 +158,21 @@ def svc_train_s(data, label, model, spca):
     end_center = time.time()
 
     # training PCA
-    print("calculating pca...")
-    if spca is not None:
+    if type(spca) is float or type(spca) is int:
         n_components  = spca
+    elif spca is False:
+        print("no pca")
     else:
     # pca
         n_components = n_components_selecter()
-    pca = PCA(n_components=n_components)
-    start_pca = time.time()
-    A = pca.fit_transform(D0_train)
-    end_pca = time.time()
+    if spca is not False:
+        print("calculating pca...")
+        pca = PCA(n_components=n_components)
+        start_pca = time.time()
+        A = pca.fit_transform(D0_train)
+        end_pca = time.time()
+    else:
+        A = D0_train
 
     if input("plot eigenvalues distribution? (y/n) ") == 'y':
         # Plot the distribution of the eigenvalues
@@ -205,7 +213,8 @@ def svc_train_s(data, label, model, spca):
     print("training complete")
     print(f"calculating mean time: {end_mean - start_mean:.2f} seconds")
     print(f"centering time: {end_center - start_center:.2f} seconds")
-    print(f"pca time: {end_pca - start_pca:.2f} seconds")
+    if spca is not False:
+        print(f"pca time: {end_pca - start_pca:.2f} seconds")
     print(f"svc time: {end_svc - start_svc:.2f} seconds")
     print(f"total training time: {end_svc - start_training:.2f} seconds")
     return D_m, pca, le, clf, encoded_labels
