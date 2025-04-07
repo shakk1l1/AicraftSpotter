@@ -46,10 +46,10 @@ def load_models(model):
     return trained
             
 
-def data_extraction(set):
+def data_extraction(data_set):
     """
     Extract the data from the files
-    :param set: the set to extract (train or test)
+    :param data_set: the data_set to extract (train or test)
     :return: f_images, f_labels, m_images, m_labels: the images and labels
     """
 
@@ -59,8 +59,8 @@ def data_extraction(set):
     # global variables as they will be modified
     global size, gray
 
-    # which set to extract
-    match set:
+    # which data_set to extract
+    match data_set:
         case "train":
             print("loading trainning data path...")
             f_data_path = os.path.join(path, "images_family_trainval.txt")
@@ -70,7 +70,7 @@ def data_extraction(set):
             f_data_path = os.path.join(path, "images_family_test.txt")
             m_data_path = os.path.join(path, "images_manufacturer_test.txt")
         case _:
-            print("Invalid set")
+            print("Invalid data_set")
             return None
 
     # check if size already defined
@@ -109,17 +109,20 @@ def data_extraction(set):
 
     # start the extraction of the first data set
     start_file_time_1 = time.time()
-    f_images, f_labels = file_extractor(f_data_path, "family", resizing, gray, spca)
+    f_images, f_labels = file_extractor(f_data_path, "family", resizing, gray)
     end_file_time_1 = time.time()
+
+    # get all the family names
+    print(type(f_labels))
 
     print("\nfamily data extracted")
     print("number of images and labels: " + str(len(f_images)))
-    print("number of different family: " + str(len(set(f_labels))))
-    print("different family: " + str(set(f_labels)))
+    print(f"number of different family: {len(set(f_labels))}")
+    print(f"different family: {set(f_labels)}")
 
     # start the extraction of the second data set
     start_file_time_2 = time.time()
-    m_images, m_labels = file_extractor(m_data_path, "manufacturer", resizing, gray, spca)
+    m_images, m_labels = file_extractor(m_data_path, "manufacturer", resizing, gray)
     print("\nmanufacturer data extracted")
     print("number of images and labels: " + str(len(m_images)))
     print("number of different manufacturer: " + str(len(set(m_labels))))
@@ -132,11 +135,11 @@ def data_extraction(set):
     print(f"Total time taken: {end_file_time_2 - start_time:.2f} seconds")
     return f_images, f_labels, m_images, m_labels
 
-def file_extractor(data_path, set, resizing, gray):
+def file_extractor(data_path, data_set, resizing, gray):
     """
     Extract the data from the files
     :param data_path: path to the data
-    :param set: which set to extract (family or manufacturer)
+    :param data_set: which data_set to extract (family or manufacturer)
     :param resizing: if the image should be resized
     :param gray: if the image should be gray scaled
     :return: m_images, m_labels: the images and labels
@@ -181,14 +184,14 @@ def file_extractor(data_path, set, resizing, gray):
                 croped_img = cv2.resize(croped_img, (size, size), interpolation=cv2.INTER_AREA)
 
             # check if the image was well cropped and resized
-            if gray:
-                g = 1
-            else:
-                g = 3
-            if np.array(croped_img.flatten()).shape != (size * size * g,):
-                print(f"Error cropping image: {image_name}")
-                print(f"Expected shape: {(1, size * size * 3)}, but got: {np.array(croped_img.flatten()).shape}")
-                return None
+            # if gray:
+            #     g = 1
+            # else:
+            #     g = 3
+            # if np.array(croped_img.flatten()).shape != (size * size * g,):
+            #     print(f"Error cropping image: {image_name}")
+            #     print(f"Expected shape: {(1, size * size * 3)}, but got: {np.array(croped_img.flatten()).shape}")
+            #     return None
 
             # add the image and label to the arrays
             m_images.append(croped_img.flatten())
@@ -198,7 +201,7 @@ def file_extractor(data_path, set, resizing, gray):
             if (round(i / num_lines, 1) * 100) % 2 == 0:
                 print('\r' + ' ' * 50, end='', flush=True)  # Clear the line
                 print('\r', end='', flush=True)  # Move the cursor back to the
-                print("extracting " + set + " data... " + str((i / num_lines) * 100) + "%" + f"  time per file: {time.time() - start:.2f} seconds", end='', flush=True)
+                print("extracting " + data_set + " data... " + str((i / num_lines) * 100) + "%" + f"  time per file: {time.time() - start:.2f} seconds", end='', flush=True)
             i += 1
     return m_images, m_labels
 
