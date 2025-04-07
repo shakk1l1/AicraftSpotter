@@ -5,6 +5,7 @@ from path import *
 from database import *
 from data_extract import data_extraction
 from PCA_SVC import *
+from lreg import *
 from image_handler import *
 from main import image_list
 
@@ -48,22 +49,38 @@ def command_model(actual_model=None, actual_train_status=None):
     # Change the model
     print("CAREFUL : this will reset the training")
     print("select the AI model: ")
-    print("     > svc (with pca) => svc")
+    print("-----------regression based-----------")
+    print("-------(PCA possible beforehand)-------")
+    print("     > svc => svc")
     print("     > linear svc => lsvc")
     print("     > polynomial svc => psvc")
-    print("     > lasso => lasso (WIP)")
-    print("     > ridge => ridge (WIP)")
-    print("     > Least-Squares regression => lsr (WIP)")
+    print("     > lasso => lreg-lasso (WIP)")
+    print("     > ridge => lreg-ridge (WIP)")
+    print("     > Least-Squares regression => lreg-lsr (WIP)")
+    print("------------neural networks------------")
+    print("     > WIP")
     model = input("=> ")
     print("model selected: " + model)
     print("checking if model is valid and already trained...")
     if "svc" in model:
         temporary_model = "svc"
+    elif "lreg" in model:
+        temporary_model = "lreg"
     else:
         temporary_model = model
+
     match temporary_model:
         case "svc":
             from PCA_SVC import f_D_m, m_D_m
+            if f_D_m is None or m_D_m is None:
+                print("model not trained")
+                train_status = "not trained"
+            else:
+                print("model already trained")
+                print("you can already use it")
+                train_status = "trained"
+        case "lreg":
+            from lreg import f_D_m, m_D_m
             if f_D_m is None or m_D_m is None:
                 print("model not trained")
                 train_status = "not trained"

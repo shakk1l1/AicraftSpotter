@@ -1,7 +1,8 @@
-numpy
-opencv-python
-matplotlib
-scikit-learn
-regex
-scipy
+numpy~=2.2.4
+opencv-python~=4.11.0.86
+matplotlib~=3.10.1
+scikit-learn~=1.6.1
+regex~=2024.11.6
+scipy~=1.15.2
 fonttools
+joblib~=1.4.2
