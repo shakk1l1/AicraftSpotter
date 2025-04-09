@@ -127,7 +127,6 @@ def data_extraction(data_set):
     end_file_time_1 = time.time()
 
     # get all the family names
-    print(type(f_labels))
 
     print("\nfamily data extracted")
     print("number of images and labels: " + str(len(f_images)))

@@ -2,7 +2,7 @@ from scipy import sparse
 import os
 import cv2
 from sklearn.decomposition import PCA
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, balanced_accuracy_score
 from sklearn.svm import SVC
 from database import get_image_data
 from path import *
@@ -199,12 +199,12 @@ def svc_train_s(data, label, model, spca):
     # probability=True is needed for the predict_proba method and have the probability of the prediction
     match model:
         case "svc":
-            clf = SVC(probability=True, verbose=True)
+            clf = SVC(probability=True, verbose=1)
         case "lsvc":
-            clf = SVC(kernel='linear', probability=True, verbose=True)
+            clf = SVC(kernel='linear', probability=True, verbose=1)
         case "psvc":
             degree = int(input("degree of the polynomial kernel: "))
-            clf = SVC(kernel='poly', degree=degree, probability=True, verbose=True)
+            clf = SVC(kernel='poly', degree=degree, probability=True, verbose=1)
     start_svc = time.time()
     # train the SVC
     clf.fit(A, label)
@@ -369,16 +369,16 @@ def svc_test_s(data, label, D_m, clf, pca):
     end_predict_1 = time.time()
 
     # 2nd method
-    #start_predict_2 = time.time()
-    #predictions = clf.predict(A_test)
-    #accuracy = accuracy_score(label, predictions)
+    start_predict_2 = time.time()
+    predictions = clf.predict(A_test)
+    accuracy = balanced_accuracy_score(label, predictions)
 
     end_predict_2 = time.time()
 
     print(f"Accuracy: {scores *100:.2f}%")
     print(f"time for accuracy score: {end_predict_1 - start_predict_1:.2f} seconds")
-    #print(f'Accuracy (accuracy_score method): {accuracy * 100:.2f}%')
-    #print(f"time for accuracy score: {end_predict_2 - start_predict_2:.2f} seconds")
+    print(f'Balanced accuracy (mean accuracy of each label): {accuracy * 100:.2f}%')
+    print(f"time for balanced accuracy score: {end_predict_2 - start_predict_2:.2f} seconds")
     print(f"centering time: {end_center - start_center:.2f} seconds")
     if pca is not None:
         print(f"pca time: {end_pca - start_pca:.2f} seconds")

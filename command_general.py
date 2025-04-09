@@ -56,7 +56,7 @@ def command_model(actual_model=None, actual_train_status=None):
     print("     > linear svc => lsvc")
     print("     > polynomial svc => psvc")
     print("     > lasso => lreg-lasso (x)")
-    print("     > ridge => lreg-ridge")
+    print("     > ridge classifier=> lreg-ridge")
     print("     > Least-Squares regression => lreg-lsr (x)")
     print("----------(Cross Validation)----------")
     print("     > cross validation ridge => cv-ridge")
@@ -65,7 +65,7 @@ def command_model(actual_model=None, actual_train_status=None):
     print("     > WIP")
     print("WIP = Work In Progress")
     print("x = not working well as it use continuous data prediction, i.e. it is not a classification model")
-    model = input("=> ")
+    model = input("     => ")
     print("model selected: " + model)
     print("checking if model is valid and already trained...")
     if "svc" in model:
@@ -144,7 +144,8 @@ def command(model, train_status):
         case "show":
             # Show the image
             image_number = input("image number: ")
-            if image_number == 'image not found':
+            if image_number not in os.listdir(path + '/images'):
+                print("image not found")
                 print('maybe an typo error')
                 print('try again')
             else:
@@ -164,7 +165,7 @@ def command(model, train_status):
 
         case "train":
             # Train the model
-            if model is None:
+            if model == 'None':
                 print("No model selected, please select a model using model command")
             else:
                 print("extracting training data...")
@@ -210,28 +211,31 @@ def command(model, train_status):
             pass
 
         case "test":
-            # Test the model
-            print("extracting test data...")
-            # Load the test data
-            f_test_data, f_test_label, m_test_data, m_test_label = data_extraction("test")
-            if "svc" in model:
-                temporary_model = "svc"
-            elif "lreg" in model:
-                temporary_model = "lreg"
-            elif "cv" in model:
-                temporary_model = "cv"
+            if train_status == "not trained" or model == 'None':
+                print("No model selected or training done, please select and train a model")
             else:
-                temporary_model = model
-            match temporary_model:
-                case "svc":
-                    print("Testing with svc...")
-                    svc_test(f_test_data, f_test_label, m_test_data, m_test_label)
-                case "lreg":
-                    print("Testing with linear regression...")
-                    lreg_test(f_test_data, f_test_label, m_test_data, m_test_label)
-                case "cv":
-                    print("Testing with cross validation...")
-                    cv_test(f_test_data, f_test_label, m_test_data, m_test_label)
+                # Test the model
+                print("extracting test data...")
+                # Load the test data
+                f_test_data, f_test_label, m_test_data, m_test_label = data_extraction("test")
+                if "svc" in model:
+                    temporary_model = "svc"
+                elif "lreg" in model:
+                    temporary_model = "lreg"
+                elif "cv" in model:
+                    temporary_model = "cv"
+                else:
+                    temporary_model = model
+                match temporary_model:
+                    case "svc":
+                        print("Testing with svc...")
+                        svc_test(f_test_data, f_test_label, m_test_data, m_test_label)
+                    case "lreg":
+                        print("Testing with linear regression...")
+                        lreg_test(f_test_data, f_test_label, m_test_data, m_test_label)
+                    case "cv":
+                        print("Testing with cross validation...")
+                        cv_test(f_test_data, f_test_label, m_test_data, m_test_label)
             pass
 
         case "model":
@@ -241,7 +245,7 @@ def command(model, train_status):
         case "predict":
 
             # Predict a specific image
-            if train_status == "not trained" or model is None:
+            if train_status == "not trained" or model == 'None':
                 print("No model selected or training done, please select and train a model")
             else:
                 image_number = input("image number: ")

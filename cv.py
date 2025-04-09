@@ -2,7 +2,7 @@ from scipy import sparse
 import os
 import cv2
 from sklearn.decomposition import PCA
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, balanced_accuracy_score
 from database import get_image_data
 from sklearn.linear_model import Lasso, LinearRegression, RidgeClassifier, RidgeClassifierCV, LassoCV
 from path import *
@@ -203,7 +203,7 @@ def cv_train_s(data, label, model, spca, coefficient=None):
             clf = LassoCV(cv=coefficient, random_state=0, max_iter=10000)
             label = le.transform(label)
         case "cv-ridge":
-            clf = RidgeClassifierCV(cv=coefficient, max_iter=10000)
+            clf = RidgeClassifierCV(cv=coefficient)
             le = None
     start_cv = time.time()
     # train the cv
@@ -380,11 +380,17 @@ def cv_test_s(data, label, D_m, clf, pca, le):
 
     end_predict_2 = time.time()
 
-    print(f"Accuracy: {accuracy *100:.2f}%")
+    # 3d method
+
+    start_predict_3 = time.time()
+    accuracy_b = balanced_accuracy_score(label, predictions)
+    end_predict_3 = time.time()
+
+    print(f"Accuracy: {accuracy * 100:.2f}%")
     print(f"time for accuracy score: {end_predict_2 - start_predict_2:.2f} seconds")
-    #print(f'Accuracy (accuracy_score method): {accuracy * 100:.2f}%')
-    #print(f"time for accuracy score: {end_predict_2 - start_predict_2:.2f} seconds")
+    print(f'Balanced accuracy (mean accuracy of each label): {accuracy_b * 100:.2f}%')
+    print(f"time for balanced accuracy score: {end_predict_3 - start_predict_3:.2f} seconds")
     print(f"centering time: {end_center - start_center:.2f} seconds")
     if pca is not None:
         print(f"pca time: {end_pca - start_pca:.2f} seconds")
-    print(f"total testing time: {end_predict_2 - start:.2f} seconds")
+    print(f"total testing time: {end_predict_3 - start:.2f} seconds")
