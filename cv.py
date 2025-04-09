@@ -209,6 +209,8 @@ def cv_train_s(data, label, model, spca, coefficient=None):
     # train the cv
     clf.fit(A, label)
     end_cv = time.time()
+    if model == "cv-lasso":
+        print(f"Optimal alpha found for lasso: {clf.alpha_}")
 
     # print the time taken for each step
     print("training complete")
