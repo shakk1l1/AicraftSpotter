@@ -13,12 +13,14 @@ import joblib
 import time
 
 # Global variables
+# f_ for family
 f_D_m = None
 f_pca = None
 f_clf = None
 f_le = None
 f_encoded_labels = None
 
+# m_ for manufacturer
 m_D_m = None
 m_pca = None
 m_clf = None
@@ -27,9 +29,8 @@ m_encoded_labels = None
 
 def load_cv_models(model):
     """
-    Load the cv models
-    :param model:
-    :return:
+    Load the cv models saved in the models folder by changing global variables
+    :param model: cv model to load
     """
 
     # import the functions from data_extract
@@ -57,12 +58,11 @@ def load_cv_models(model):
 def cv_train(data_family, label_family, data_manufacturer, label_manufacturer, model):
     """
     Train the two cv models
-    :param data_family:
-    :param label_family:
+    :param data_family: image data in numpy array (#images, size*size)
+    :param label_family: labels of each image
     :param data_manufacturer:
     :param label_manufacturer:
-    :param model:
-    :return:
+    :param model: model to use for training
     """
 
     # global variables as they will be modified
@@ -71,13 +71,15 @@ def cv_train(data_family, label_family, data_manufacturer, label_manufacturer, m
 
     print("cv training")
 
-    if input("use PCA? (y/n) ") == 'y':
+    if input("use PCA? (y/n) ") == 'y':     # ask if PCA is wanted
         if input("apply the same PCA on the two data sets? (y/n) ") == 'y':
-            spca = n_components_selecter()
+            spca = n_components_selecter()      # select the number of components that will be used for PCA
         else:
             spca = None
     else:
         spca = False
+
+    # select the number of folds for cross validation
     cv = int(input("selcect number of fold for cross validation: "))
 
     print("training family model...")
@@ -85,13 +87,14 @@ def cv_train(data_family, label_family, data_manufacturer, label_manufacturer, m
     print("training manufacturer model...")
     m_D_m, m_pca, m_le, m_clf, m_encoded_labels = cv_train_s(data_manufacturer, label_manufacturer, model, spca, cv)
     
-    # Save the models
+    # create the path to the models folder
     newpath = os.path.join(path, 'models/' + model)
 
     # create the directory if it does not exist
     if not os.path.exists(newpath):
         os.makedirs(newpath)
 
+    # save the models
     joblib.dump(f_clf, os.path.join(path, 'models/' + model, 'family_model.pkl'))
     joblib.dump(f_le, os.path.join(path, 'models/' + model, 'family_label_encoder.pkl'))
     joblib.dump(m_clf, os.path.join(path, 'models/' + model, 'manufacturer_model.pkl'))
@@ -103,6 +106,7 @@ def cv_train(data_family, label_family, data_manufacturer, label_manufacturer, m
 
     # import last version of size and gray
     from data_extract import size, gray
+    # save the size and gray variables
     joblib.dump(size, os.path.join(path, 'models/' + model, 'size.pkl'))
     joblib.dump(gray, os.path.join(path, 'models/' + model, 'gray.pkl'))
 
@@ -113,33 +117,34 @@ def cv_train(data_family, label_family, data_manufacturer, label_manufacturer, m
 def n_components_selecter():
     """
     select the number of components for PCA
-    :return:
+    :return: number of components
     """
-    n_components = float(input("number of components for pca (0 for no pca): "))
-    if n_components > 1: # if n_components is an integer it must be the number of components
-        try:
+    try:
+        n_components = float(input("number of components for pca (0 for no pca): "))
+        if n_components > 1: # if n_components is an integer it must be the number of components
             n_components = int(n_components)
-        except:
-            print("Invalid number of components, please enter an integer over 1 or a float under 1")
-            n_components_selecter()
+    except:
+        print("Invalid number of components, please enter an integer over 1 or a float under 1")
+        n_components_selecter()
     # else it must be a % of the image data to keep
     return n_components
 
 def cv_train_s(data, label, model, spca, coefficient=None):
     """
     train the cv model
-    :param data:
-    :param label:
-    :param model:
-    :param spca:
-    :return:
+    :param data: data for the model training
+    :param label: labels for the model training
+    :param model: model selected for training
+    :param spca: number of components for PCA
+    :param coefficient: number of folds for cross validation
+    :return: model variables trained
     """
     # start the timer
     start_training = time.time()
 
-    # Encode labels for the plots
+    # Encode labels for the plots and the non-classifier models
     le = LabelEncoder()
-    encoded_labels = le.fit_transform(label)
+    encoded_labels = le.fit_transform(label)        # transform class labels to numbers
 
     # convert data to numpy array
     data_train = np.array(data)
@@ -153,29 +158,35 @@ def cv_train_s(data, label, model, spca, coefficient=None):
     start_mean = time.time()
     D_m = np.mean(data_train, axis=0)
     end_mean = time.time()
+
     print("centering data...")
     start_center = time.time()
     D0_train = data_train - D_m
     end_center = time.time()
 
-    # training PCA
+    # check the 3 cases for PCA
+    # 1st case: spca is a number of components
+    # 2nd case: spca is False (no PCA)
+    # 3rd case: spca is None (ask for the number of components for each data set)
     if type(spca) is float or type(spca) is int:
         n_components  = spca
     elif spca is False:
         print("no pca")
-    else:
-    # pca
+    else:       # normally spca is None here
         n_components = n_components_selecter()
+
+    # pca transformation
     if spca is not False:
         print("calculating pca...")
         pca = PCA(n_components=n_components)
         start_pca = time.time()
         A = pca.fit_transform(D0_train)
         end_pca = time.time()
-    else:
-        A = D0_train
+    else:       # no pca. Data is unchanged
         pca = None
+        A = D0_train
 
+    # non-obligatory plots
     if input("plot eigenvalues distribution? (y/n) ") == 'y':
         # Plot the distribution of the eigenvalues
         plt.title("Eigenvalues distribution")
@@ -194,21 +205,25 @@ def cv_train_s(data, label, model, spca, coefficient=None):
         plt.colorbar(im)
         plt.show()
 
-    # training cv
+    # training cv models
     print("training cv...")
     # variance of cv possible models
-    # probability=True is needed for the predict_proba method and have the probability of the prediction
     match model:
         case "cv-lasso":
-            clf = LassoCV(cv=coefficient, random_state=0, max_iter=10000)
-            label = le.transform(label)
+            clf = LassoCV(cv=coefficient, random_state=0)
+            label = le.transform(label)     # transform class labels to numbers as lassoCV does not accept strings
+                                            # LassoCV is not a Classifier. It will predict a float value
         case "cv-ridge":
             clf = RidgeClassifierCV(cv=coefficient)
-            le = None
+            le = None       # set le to None to know afterwards that the model is a classifier
+                            # and does not need to have prediction transformed
+
     start_cv = time.time()
     # train the cv
     clf.fit(A, label)
     end_cv = time.time()
+
+    # print the optimal alpha found for lasso
     if model == "cv-lasso":
         print(f"Optimal alpha found for lasso: {clf.alpha_}")
 
@@ -220,22 +235,24 @@ def cv_train_s(data, label, model, spca, coefficient=None):
         print(f"pca time: {end_pca - start_pca:.2f} seconds")
     print(f"cv time: {end_cv - start_cv:.2f} seconds")
     print(f"total training time: {end_cv - start_training:.2f} seconds")
+
     return D_m, pca, le, clf, encoded_labels
 
 def cv_predict(image_name):
     """
     Predict the family and manufacturer of an image
-    :param image_name:
-    :return:
+    :param image_name: the name of the image to predict
+    :return: None
     """
+
     # start the timer
     start_predict = time.time()
+
     # get the size and gray scale from the model to be in accordance with the training
     from data_extract import size, gray
     start_extract = time.time()
-
     # extract the image
-    if gray:
+    if gray:        # if the model was trained with gray scale images
         img = cv2.imread(os.path.join(path + '/images', image_name + '.jpg'), cv2.IMREAD_GRAYSCALE)
     else:
         img = cv2.imread(os.path.join(path + '/images', image_name + '.jpg'))
@@ -246,18 +263,23 @@ def cv_predict(image_name):
     # get crop values
     values = get_image_data(image_name)
     x1, y1, x2, y2 = values[0], values[1], values[2], values[3]
+
     #crop and resize the image
     croped_img = img[y1 + 1:y2 + 1, x1 + 1:x2 + 1]
     croped_img = cv2.resize(croped_img, (size, size), interpolation=cv2.INTER_AREA)
+
+    # flatten the image to a semi-1D array
     d_img = croped_img.flatten()
     d_img_array = []
-    d_img_array.append(d_img)
+    d_img_array.append(d_img)       # transform the image to a 2D array (1, size*size)
     end_extract = time.time()
 
     print("predicting family...")
 
     print("normalizing data...")
     d_img_array = np.array(d_img_array) / 255.0
+
+    ## Family model prediction
     # centering
     print("centering data...")
     start_center_f = time.time()
@@ -279,11 +301,13 @@ def cv_predict(image_name):
     start_predict_f = time.time()
     pred = f_clf.predict(A_img)
     end_predict_f = time.time()
-    if f_le is not None:
-        pred = f_le.inverse_transform(pred.astype(int))
+    if f_le is not None:        # transform the prediction to the original labels if needed
+        pred = f_le.inverse_transform(pred.astype(int))     # transform float to the nearest int
     print(f"Predicted family: {pred[0]}")
 
+
     print("predicting manufacturer...")
+    ## Manufacturer model prediction
     # centering
     start_center_m = time.time()
     d_img_c = d_img_array - m_D_m
@@ -323,7 +347,6 @@ def cv_test(data_family, label_family, data_manufacturer, label_manufacturer):
     :param label_family:
     :param data_manufacturer:
     :param label_manufacturer:
-    :return:
     """
     print("testing family model...")
     cv_test_s(data_family, label_family, f_D_m, f_clf, f_pca, f_le)
@@ -333,13 +356,13 @@ def cv_test(data_family, label_family, data_manufacturer, label_manufacturer):
 def cv_test_s(data, label, D_m, clf, pca, le):
     """
     Test the cv model
-    :param data:
-    :param label:
-    :param D_m:
-    :param clf:
-    :param pca:
-    :return:
+    :param data: data for the model testing
+    :param label: labels for the model testing
+    :param D_m: mean of the data used for training
+    :param clf: model used
+    :param pca: pca model used if any
     """
+
     # start the timer
     start = time.time()
 
@@ -353,7 +376,7 @@ def cv_test_s(data, label, D_m, clf, pca, le):
     D0_test = data - D_m
     end_center = time.time()
 
-    if pca is None:
+    if pca is None:     # check if pca was used
         print("no pca used")
         A_test = D0_test
     else:
@@ -362,12 +385,12 @@ def cv_test_s(data, label, D_m, clf, pca, le):
         A_test = pca.transform(D0_test)
         end_pca = time.time()
 
-    if le is not None:
+    if le is not None:      # transform the labels to numbers if needed
         print("label encoding...")
         label = le.transform(label)
 
     print("predicting and calculating score...")
-    # two methods to calculate the score
+    # 3 methods to calculate the score
     # 1st method
     # start_predict_1 = time.time()
     # scores = clf.score(A_test, label)

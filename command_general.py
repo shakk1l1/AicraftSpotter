@@ -13,42 +13,49 @@ from main import image_list
 def commandpath():
     """
     Handle path-related commands for setting and displaying the folder path.
+    It handle path.py that is just a file that contains a variable definition named path
+    :return: None
     """
-    c_p = input('/path >> ')
-    match c_p:
+    c_p = input('/path >> ')        # get command from user
+    match c_p:      # command possibilities
         case 'help':
             print("List of commands")
             print('     esc: escape')
             print('     show: show existing path')
-            print('     new: create new path')
-            commandpath()
-        case "esc":
+            print('     new: create new path')      # no need to create a new path beause it is automatically created
+            commandpath()                               # see main.py
+        case "esc":     # Quit the command path section
             return None
         case "show":
             try:
-                f = open("path.py", "r")
-            except FileNotFoundError:
+                f = open("path.py", "r")        # open the path.py
+            except FileNotFoundError:       # if path.py not found, error
                 print("No path found, please create a new one")
                 commandpath()
                 return
             print(f.read())
             f.close()
             commandpath()
-        case "new":
+        case "new":     # change the path
             new_path = input('new path:')
             with open('path.py', 'w') as f:
-                f.write('path = ' + "r'" + new_path + "'")
+                f.write('path = ' + "r'" + new_path + "'")      # write the new path to the path.py
             print("Path saved!")
             commandpath()
-        case _:
+        case _:     # unknown command
             print("unknown command")
             print("use help for commands list")
             commandpath()
     return None
 
 def command_model(actual_model=None, actual_train_status=None):
-    # Change the model
-    print("CAREFUL : this will reset the training")
+    """
+    Handle the model selection and check training status.
+    :param actual_model: the model that is already selected
+    :param actual_train_status: the status of the model that is already selected
+    :return: model: the model selected, train_status: the status of the model selected
+    """
+    print("CAREFUL : this will reset the training if you select a new model")
     print("select the AI model: ")
     print("-----------regression based-----------")
     print("-------(PCA possible beforehand)-------")
@@ -65,9 +72,12 @@ def command_model(actual_model=None, actual_train_status=None):
     print("     > WIP")
     print("WIP = Work In Progress")
     print("x = not working well as it use continuous data prediction, i.e. it is not a classification model")
-    model = input("     => ")
+    model = input("     => ")       # get the new wanted model from user
+
     print("model selected: " + model)
     print("checking if model is valid and already trained...")
+
+    # as some models have the same load function and files, we can just check family
     if "svc" in model:
         temporary_model = "svc"
     elif "lreg" in model:
@@ -79,9 +89,9 @@ def command_model(actual_model=None, actual_train_status=None):
 
     match temporary_model:
         case "svc":
-            from PCA_SVC import f_D_m, m_D_m
-            if f_D_m is None or m_D_m is None:
-                print("model not trained")
+            from PCA_SVC import f_D_m, m_D_m        # import global variables from PCA_SVC that are modified in the training
+            if f_D_m is None or m_D_m is None:      # check if the model is trained by checking if one value is None
+                print("model not trained")          # when trained, those values can't be None
                 train_status = "not trained"
             else:
                 print("model already trained")
@@ -105,20 +115,25 @@ def command_model(actual_model=None, actual_train_status=None):
                 print("model already trained")
                 print("you can already use it")
                 train_status = "trained"
-        case _:
+        case _:     # unknown model
             print("unknown model")
-            model = actual_model
-            train_status = actual_train_status
+            model = actual_model        # keep the previous model
+            train_status = actual_train_status      # keep the previous training status
             print("use help for commands list")
     return model, train_status
 
 def command(model, train_status):
     """
     Handle user commands for the command line interface.
+    :param model: the model selected
+    :param train_status: the training status of the model selected
+    :return: on: if the program should continue running
+    :return: model: the model selected
+    :return: train_status: the training status of the model selected
     """
     # Get the command from the user
     c = input('('+ model + '/' + train_status +')' + '>> ')
-    on = True
+    on = True       # keep the program running
 
     match c:
         case 'help':
@@ -138,13 +153,13 @@ def command(model, train_status):
         case "esc":
             # Escape the program
             print("Exiting...")
-            on = False
+            on = False      # exit the program (see main.py loop)
             pass
 
         case "show":
             # Show the image
             image_number = input("image number: ")
-            if image_number not in os.listdir(path + '/images'):
+            if image_number not in os.listdir(path + '/images'):        # check if the image exists in the folder
                 print("image not found")
                 print('maybe an typo error')
                 print('try again')
@@ -165,13 +180,17 @@ def command(model, train_status):
 
         case "train":
             # Train the model
-            if model == 'None':
+            if model == 'None':     # check if a model is selected
                 print("No model selected, please select a model using model command")
             else:
                 print("extracting training data...")
                 # Load the training data
                 f_train_data, f_train_label, m_train_data, m_train_label = data_extraction("train")
-                # update size variable
+                if f_train_data is None or f_train_label is None or m_train_data is None or m_train_label is None:
+                    print("Error extracting training data")
+                    print("Please verify the data")
+                    return model, train_status
+
                 match model:
                     case "svc":
                         print("Training with svc")
@@ -211,13 +230,18 @@ def command(model, train_status):
             pass
 
         case "test":
-            if train_status == "not trained" or model == 'None':
+            if train_status == "not trained" or model == 'None':        # check if a model is selected and trained
                 print("No model selected or training done, please select and train a model")
             else:
                 # Test the model
                 print("extracting test data...")
                 # Load the test data
                 f_test_data, f_test_label, m_test_data, m_test_label = data_extraction("test")
+                if f_test_data is None or f_test_label is None or m_test_data is None or m_test_label is None:
+                    print("Error extracting training data")
+                    print("Please verify the data")
+                    return model, train_status
+
                 if "svc" in model:
                     temporary_model = "svc"
                 elif "lreg" in model:
@@ -226,6 +250,7 @@ def command(model, train_status):
                     temporary_model = "cv"
                 else:
                     temporary_model = model
+
                 match temporary_model:
                     case "svc":
                         print("Testing with svc...")
@@ -239,17 +264,17 @@ def command(model, train_status):
             pass
 
         case "model":
+            # Change the model
             model, train_status = command_model(model, train_status)
             pass
 
         case "predict":
-
             # Predict a specific image
-            if train_status == "not trained" or model == 'None':
+            if train_status == "not trained" or model == 'None':       # check if a model is selected and trained
                 print("No model selected or training done, please select and train a model")
             else:
                 image_number = input("image number: ")
-                if (image_number + '.jpg') in image_list:
+                if (image_number + '.jpg') in image_list:       # check if the image exists in the folder
                     if "svc" in model:
                         temporary_model = "svc"
                     elif "lreg" in model:
@@ -258,6 +283,7 @@ def command(model, train_status):
                         temporary_model = "cv"
                     else:
                         temporary_model = model
+
                     match temporary_model:
                         case "svc":
                             print("Predicting with svc...")
@@ -275,17 +301,21 @@ def command(model, train_status):
                     print("maybe an typo error")
                     print("try again")
             pass
+
         case "load":
             # Load the model
             train_status = load_models(model) 
             pass
+
         case "backdoor":
             # Backdoor command (for testing purposes)
             print("what is going on")
             pass
+
         case _:
             # Handle unknown commands
             print("unknown command")
             print("use help for commands list")
             pass
+
     return on, model, train_status

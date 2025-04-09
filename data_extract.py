@@ -30,7 +30,7 @@ def load_models(model):
         print("Please train the model first")
         return 'not trained'
 
-    # svc have the same load function
+    # as some models have the same function and file, we can goup them
     if "svc" in model:
         temporary_model = "svc"
     elif "lreg" in model:
@@ -74,6 +74,7 @@ def data_extraction(data_set):
     global size, gray
 
     # which data_set to extract
+    # and get the path
     match data_set:
         case "train":
             print("loading trainning data path...")
@@ -85,25 +86,19 @@ def data_extraction(data_set):
             m_data_path = os.path.join(path, "images_manufacturer_test.txt")
         case _:
             print("Invalid data_set")
-            return None
+            return None, None, None, None
 
     # check if size already defined
+    # else ask the user
     if size is None:
         if input("resize image (for squared final images (needed for PCA/SVC))? (y/n) ") == 'y':
             size = int(input("define size of the image (x, x) (0 for not resizing): "))
-            resizing = True
-        else:
-            resizing = False
     else:
         print("size already defined (" + str(size) + ')')
-        if input("is it correct? (y/n) ") == 'y':
-            resizing = True
-        else:
+        if input("is it correct? (y/n) ") == 'n':
             size = int(input("define size of the image (x, x) (0 for not resizing): "))
             if size == 0:
-                resizing = False
-            else:
-                resizing = True
+                size = None
 
     # check if gray already defined
     if gray is None:
@@ -123,7 +118,7 @@ def data_extraction(data_set):
 
     # start the extraction of the first data set
     start_file_time_1 = time.time()
-    f_images, f_labels = file_extractor(f_data_path, "family", resizing, gray)
+    f_images, f_labels = file_extractor(f_data_path, "family", gray)
     end_file_time_1 = time.time()
 
     # get all the family names
@@ -135,7 +130,7 @@ def data_extraction(data_set):
 
     # start the extraction of the second data set
     start_file_time_2 = time.time()
-    m_images, m_labels = file_extractor(m_data_path, "manufacturer", resizing, gray)
+    m_images, m_labels = file_extractor(m_data_path, "manufacturer", gray)
     print("\nmanufacturer data extracted")
     print("number of images and labels: " + str(len(m_images)))
     print("number of different manufacturer: " + str(len(set(m_labels))))
@@ -148,12 +143,11 @@ def data_extraction(data_set):
     print(f"Total time taken: {end_file_time_2 - start_time:.2f} seconds")
     return f_images, f_labels, m_images, m_labels
 
-def file_extractor(data_path, data_set, resizing, gray):
+def file_extractor(data_path, data_set, gray):
     """
     Extract the data from the files
     :param data_path: path to the data
     :param data_set: which data_set to extract (family or manufacturer)
-    :param resizing: if the image should be resized
     :param gray: if the image should be gray scaled
     :return: m_images, m_labels: the images and labels
     """
@@ -192,7 +186,7 @@ def file_extractor(data_path, data_set, resizing, gray):
             croped_img = img[y1 + 1:y2 + 1, x1 +1:x2 +1]
 
             # resize the image if needed
-            if resizing:
+            if size is not None:
                 # Adjust the size of the image
                 croped_img = cv2.resize(croped_img, (size, size), interpolation=cv2.INTER_AREA)
 
@@ -222,6 +216,7 @@ def change_size(model):
     """
     Change the size of the images. Needed because global variables must be changed in the right folders
     :param model: model to load
+    :return: size, gray: the size and gray scale status of the images
     """
     # global variables will be modified
     global size, gray

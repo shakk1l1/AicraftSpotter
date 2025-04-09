@@ -12,18 +12,18 @@ def get_image_path(image_number):
     Get the path to the image
     :return: path to the image
     """
-    images = os.listdir(path + '/images')
-    if image_number in images:
+    images = os.listdir(path + '/images')   # get all the images in the images folder in a list
+    if image_number in images:      # check if the image is in the list
         print('image found')
         image_path = os.path.join(path + '/images', image_number)
-    else:
+    else:       # if the image is not in the list
         print('image not found')
         image_path = 'image not found'
     return image_path
 
 def show_image(image_number):
     """
-    Show the image
+    Show the image using matplotlib and OpenCV
     :param image_path: path to the image
     :return: None
     """
@@ -38,10 +38,9 @@ def show_image(image_number):
         image = image[y1 + 1:y2 + 1, x1 +1:x2 +1]
         print("cropped image")
     if input("resize image? (y/n) ") == 'y':
-        # Resize the image to 64x64
         size = int(input("size of the image (x, x): "))
-        image = cv2.resize(image, (size, size))
+        image = cv2.resize(image, (size, size), interpolation=cv2.INTER_AREA)
+
     plt.title(f'Image number = {int(image_number)}')
     plt.imshow(image)
-
     plt.show()
