@@ -199,15 +199,15 @@ def svc_train_s(data, label, model, spca):
     # probability=True is needed for the predict_proba method and have the probability of the prediction
     match model:
         case "svc":
-            clf = SVC(probability=True, verbose=1)
+            clf = SVC(probability=True)
         case "lsvc":
-            clf = SVC(kernel='linear', probability=True, verbose=1)
+            clf = SVC(kernel='linear', probability=True)
         case "psvc":
             degree = int(input("degree of the polynomial kernel: "))
-            clf = SVC(kernel='poly', degree=degree, probability=True, verbose=1)
+            clf = SVC(kernel='poly', degree=degree, probability=True)
         case _:
             print("Invalid model, using default SVC")
-            clf = SVC(probability=True, verbose=1)
+            clf = SVC(probability=True)
     start_svc = time.time()
     # train the SVC
     clf.fit(A, label)

@@ -159,7 +159,7 @@ def command(model, train_status):
         case "show":
             # Show the image
             image_number = input("image number: ")
-            if image_number not in os.listdir(path + '/images'):        # check if the image exists in the folder
+            if image_number not in image_list:        # check if the image exists in the folder
                 print("image not found")
                 print('maybe an typo error')
                 print('try again')
@@ -310,6 +310,7 @@ def command(model, train_status):
         case "backdoor":
             # Backdoor command (for testing purposes)
             print("what is going on")
+            show_image("0034309")
             pass
 
         case _:
