@@ -1,8 +1,7 @@
-from scipy import sparse
 import os
 import cv2
 from sklearn.decomposition import PCA
-from sklearn.metrics import accuracy_score, balanced_accuracy_score
+from sklearn.metrics import balanced_accuracy_score
 from sklearn.svm import SVC
 from database import get_image_data
 from path import *
@@ -13,6 +12,7 @@ import joblib
 import time
 
 # Global variables
+# These variables are used to store the models and data
 f_D_m = None
 f_pca = None
 f_clf = None
@@ -205,6 +205,9 @@ def svc_train_s(data, label, model, spca):
         case "psvc":
             degree = int(input("degree of the polynomial kernel: "))
             clf = SVC(kernel='poly', degree=degree, probability=True, verbose=1)
+        case _:
+            print("Invalid model, using default SVC")
+            clf = SVC(probability=True, verbose=1)
     start_svc = time.time()
     # train the SVC
     clf.fit(A, label)
