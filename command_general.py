@@ -69,7 +69,7 @@ def command_model(actual_model=None, actual_train_status=None):
     print("     > cross validation ridge => cv-ridge")
     print("     > cross validation lasso => cv-lasso (x)")
     print("-----------Neural Network-------------")
-    print("     > WIP")
+    print("     > Conventional Neural Network => cnn (WIP)")
     print("WIP = Work In Progress")
     print("x = not working well as it use continuous data prediction, i.e. it is not a classification model")
     model = input("     => ")       # get the new wanted model from user
