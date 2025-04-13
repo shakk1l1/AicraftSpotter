@@ -150,7 +150,7 @@ def lreg_train_s(data, label, model, spca, coefficient=None):
     data_train = np.array(data)
 
     # normalize data
-    print("normalizing data...")
+    print("\nnormalizing data...")
     data_train = data_train / 255.0
 
     # centering data
@@ -219,13 +219,13 @@ def lreg_train_s(data, label, model, spca, coefficient=None):
     end_lreg = time.time()
 
     # print the time taken for each step
-    print("training complete")
-    print(f"calculating mean time: {end_mean - start_mean:.2f} seconds")
+    print("\ntraining complete")
+    print(f"\ncalculating mean time: {end_mean - start_mean:.2f} seconds")
     print(f"centering time: {end_center - start_center:.2f} seconds")
     if spca is not False:
         print(f"pca time: {end_pca - start_pca:.2f} seconds")
     print(f"lreg time: {end_lreg - start_lreg:.2f} seconds")
-    print(f"total training time: {end_lreg - start_training:.2f} seconds")
+    print(f"\ntotal training time: {end_lreg - start_training:.2f} seconds")
     return D_m, pca, le, clf, encoded_labels
 
 def lreg_predict(image_name):
@@ -260,7 +260,7 @@ def lreg_predict(image_name):
     d_img_array.append(d_img)
     end_extract = time.time()
 
-    print("predicting family...")
+    print("\npredicting family...")
 
     print("normalizing data...")
     d_img_array = np.array(d_img_array) / 255.0
@@ -281,7 +281,7 @@ def lreg_predict(image_name):
         end_pca_f = time.time()
 
     # Predicting
-    print("predicting...")
+    print("\npredicting...")
     start_predict_f = time.time()
     pred = f_clf.predict(A_img)
     end_predict_f = time.time()
@@ -289,7 +289,7 @@ def lreg_predict(image_name):
         pred = f_le.inverse_transform(pred.astype(int))
     print(f"Predicted family: {pred[0]}")
 
-    print("predicting manufacturer...")
+    print("\npredicting manufacturer...")
     # centering
     start_center_m = time.time()
     d_img_c = d_img_array - m_D_m
@@ -304,7 +304,7 @@ def lreg_predict(image_name):
         A_img = m_pca.transform(d_img_c)
         end_pca_m = time.time()
     # Predicting
-    print("predicting...")
+    print("\npredicting...")
     start_predict_m = time.time()
     pred = m_clf.predict(A_img)
     end_predict_m = time.time()
@@ -313,14 +313,14 @@ def lreg_predict(image_name):
     print(f"Predicted manufacturer: {pred[0]}")
 
     # print the time taken for each step
-    print(f"extracting time: {end_extract - start_extract:.2f} seconds")
-    print(f"family centering time: {end_center_f - start_center_f:.2f} seconds")
+    print(f"\nextracting time: {end_extract - start_extract:.2f} seconds")
+    print(f"\nfamily centering time: {end_center_f - start_center_f:.2f} seconds")
     print(f"family pca time: {end_pca_f - start_pca_f:.2f} seconds")
     print(f"family predicting time: {end_predict_f - start_predict_f:.2f} seconds")
-    print(f"manufacturer centering time: {end_center_m - start_center_m:.2f} seconds")
+    print(f"\nmanufacturer centering time: {end_center_m - start_center_m:.2f} seconds")
     print(f"manufacturer pca time: {end_pca_m - start_pca_m:.2f} seconds")
     print(f"manufacturer predicting time: {end_predict_m - start_predict_m:.2f} seconds")
-    print(f"total predicting time: {end_predict_m - start_predict:.2f} seconds")
+    print(f"\ntotal predicting time: {end_predict_m - start_predict:.2f} seconds")
     return None
 
 def lreg_test(data_family, label_family, data_manufacturer, label_manufacturer):
@@ -332,9 +332,9 @@ def lreg_test(data_family, label_family, data_manufacturer, label_manufacturer):
     :param label_manufacturer:
     :return:
     """
-    print("testing family model...")
+    print("\ntesting family model...")
     lreg_test_s(data_family, label_family, f_D_m, f_clf, f_pca, f_le)
-    print("testing manufacturer model...")
+    print("\ntesting manufacturer model...")
     lreg_test_s(data_manufacturer, label_manufacturer, m_D_m, m_clf, m_pca, m_le)
 
 def lreg_test_s(data, label, D_m, clf, pca, le):
@@ -369,7 +369,7 @@ def lreg_test_s(data, label, D_m, clf, pca, le):
         A_test = pca.transform(D0_test)
         end_pca = time.time()
 
-    print("predicting and calculating score...")
+    print("\npredicting and calculating score...")
     # two methods to calculate the score
     # 1st method
     # start_predict_1 = time.time()
@@ -392,7 +392,7 @@ def lreg_test_s(data, label, D_m, clf, pca, le):
     end_predict_3 = time.time()
 
     print(f"Accuracy: {accuracy *100:.2f}%")
-    print(f"time for accuracy score: {end_predict_2 - start_predict_2:.2f} seconds")
+    print(f"\ntime for accuracy score: {end_predict_2 - start_predict_2:.2f} seconds")
     print(f'Balanced accuracy (mean accuracy of each label): {accuracy_b * 100:.2f}%')
     print(f"time for balanced accuracy score: {end_predict_3 - start_predict_3:.2f} seconds")
     print(f"centering time: {end_center - start_center:.2f} seconds")

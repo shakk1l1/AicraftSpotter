@@ -8,7 +8,10 @@ from PCA_SVC import *
 from lreg import *
 from cv import *
 from image_handler import *
+from nn import *
 from main import image_list
+
+model_list = ['svc', 'lsvc', 'psvc', 'lreg-lasso', 'lreg-lsr', 'lreg-ridge', 'cv-ridge', 'cv-lasso', 'cl_nn']      # list of models available
 
 def commandpath():
     """
@@ -55,7 +58,7 @@ def command_model(actual_model=None, actual_train_status=None):
     :param actual_train_status: the status of the model that is already selected
     :return: model: the model selected, train_status: the status of the model selected
     """
-    print("CAREFUL : this will reset the training if you select a new model")
+    print("\nCAREFUL : this will reset the training if you select a new model\n")
     print("select the AI model: ")
     print("-----------regression based-----------")
     print("-------(PCA possible beforehand)-------")
@@ -69,13 +72,19 @@ def command_model(actual_model=None, actual_train_status=None):
     print("     > cross validation ridge => cv-ridge")
     print("     > cross validation lasso => cv-lasso (x)")
     print("-----------Neural Network-------------")
-    print("     > Conventional Neural Network => cnn (WIP)")
+    print("     > Conventional Linear Neural Network => cl_nn")
     print("WIP = Work In Progress")
-    print("x = not working well as it use continuous data prediction, i.e. it is not a classification model")
+    print("x = not working well as it use continuous data prediction, i.e. it is not a classification model\n")
     model = input("     => ")       # get the new wanted model from user
 
     print("model selected: " + model)
     print("checking if model is valid and already trained...")
+
+    # check if the model is in the list of models
+    if not check_model_existance(model):       # check if the model is in the list of models
+        print("model not found")
+        print("use help for commands list")
+        return actual_model, actual_train_status
 
     # as some models have the same load function and files, we can just check family
     if "svc" in model:
@@ -84,6 +93,8 @@ def command_model(actual_model=None, actual_train_status=None):
         temporary_model = "lreg"
     elif "cv" in model:
         temporary_model = "cv"
+    elif "nn" in model:
+        temporary_model = "nn"
     else:
         temporary_model = model
 
@@ -115,11 +126,21 @@ def command_model(actual_model=None, actual_train_status=None):
                 print("model already trained")
                 print("you can already use it")
                 train_status = "trained"
+        case "nn":
+            from nn import f_hidden_size, m_hidden_size
+            if f_hidden_size is None or m_hidden_size is None:
+                print("model not trained")
+                train_status = "not trained"
+            else:
+                print("model already trained")
+                print("you can already use it")
+                train_status = "trained"
         case _:     # unknown model
             print("unknown model")
             model = actual_model        # keep the previous model
             train_status = actual_train_status      # keep the previous training status
             print("use help for commands list")
+    print(" ")
     return model, train_status
 
 def command(model, train_status):
@@ -159,7 +180,7 @@ def command(model, train_status):
         case "show":
             # Show the image
             image_number = input("image number: ")
-            if image_number not in image_list:        # check if the image exists in the folder
+            if image_number + '.jpg' not in image_list:        # check if the image exists in the folder
                 print("image not found")
                 print('maybe an typo error')
                 print('try again')
@@ -181,15 +202,17 @@ def command(model, train_status):
         case "train":
             # Train the model
             if model == 'None':     # check if a model is selected
-                print("No model selected, please select a model using model command")
+                print("\nNo model selected, please select a model using model command")
             else:
-                print("extracting training data...")
+                print("\nextracting training data...")
                 # Load the training data
                 f_train_data, f_train_label, m_train_data, m_train_label = data_extraction("train")
                 if f_train_data is None or f_train_label is None or m_train_data is None or m_train_label is None:
                     print("Error extracting training data")
                     print("Please verify the data")
                     return model, train_status
+
+                print(" ")
 
                 match model:
                     case "svc":
@@ -225,11 +248,16 @@ def command(model, train_status):
                         print("training with cross validation lasso")
                         cv_train(f_train_data, f_train_label, m_train_data, m_train_label, model)
                         train_status = "trained"
+                    case "cl_nn":
+                        print("training with conventional linear neural network")
+                        nn_train(f_train_data, f_train_label, m_train_data, m_train_label, model)
+                        train_status = "trained"
                     case _:
                         print("unknown model")
             pass
 
         case "test":
+            print(" ")
             if train_status == "not trained" or model == 'None':        # check if a model is selected and trained
                 print("No model selected or training done, please select and train a model")
             else:
@@ -248,8 +276,12 @@ def command(model, train_status):
                     temporary_model = "lreg"
                 elif "cv" in model:
                     temporary_model = "cv"
+                elif "nn" in model:
+                    temporary_model = "nn"
                 else:
                     temporary_model = model
+
+                print(" ")
 
                 match temporary_model:
                     case "svc":
@@ -261,6 +293,9 @@ def command(model, train_status):
                     case "cv":
                         print("Testing with cross validation...")
                         cv_test(f_test_data, f_test_label, m_test_data, m_test_label)
+                    case "nn":
+                        print("Testing with neural network...")
+                        nn_test(f_test_data, f_test_label, m_test_data, m_test_label, model)
             pass
 
         case "model":
@@ -281,6 +316,8 @@ def command(model, train_status):
                         temporary_model = "lreg"
                     elif "cv" in model:
                         temporary_model = "cv"
+                    elif "nn" in model:
+                        temporary_model = "nn"
                     else:
                         temporary_model = model
 
@@ -294,6 +331,9 @@ def command(model, train_status):
                         case "cv":
                             print("Predicting with cross validation...")
                             cv_predict(image_number)
+                        case "nn":
+                            print("Predicting with neural network...")
+                            nn_predict(image_number)
                         case _:
                             print("unknown model")
                 else:
@@ -318,5 +358,17 @@ def command(model, train_status):
             print("unknown command")
             print("use help for commands list")
             pass
-
+    print(" ")
     return on, model, train_status
+
+def check_model_existance(model):
+    """
+    Check if the model exists in the models folder
+    :param model: model to check
+    :return: True if the model exists, False otherwise
+    """
+    if model in model_list:
+        return True
+    else:
+        print("model not exising")
+        return False

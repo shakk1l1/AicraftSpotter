@@ -4,6 +4,7 @@ import cv2
 from PCA_SVC import load_svc_models
 from lreg import load_lreg_models
 from cv import load_cv_models
+from nn import load_nn_models
 from path import *
 from database import get_image_data
 import regex as re
@@ -21,13 +22,13 @@ def load_models(model):
     :param model: model to load
     :return: trained: if the model was well loaded or not
     """
-    print("Finfing models...")
+    print("\nFinfing models...")
     #check if the file exists
     if os.path.exists(os.path.join(path, 'models/' + model)):
-        print("model found")
+        print("model found\n")
     else:
         print("Model not found")
-        print("Please train the model first")
+        print("Please train the model first\n")
         return 'not trained'
 
     # as some models have the same function and file, we can goup them
@@ -37,6 +38,8 @@ def load_models(model):
         temporary_model = "lreg"
     elif "cv" in model:
         temporary_model = "cv"
+    elif "nn" in model:
+        temporary_model = "nn"
     else:
         temporary_model = model
 
@@ -53,7 +56,10 @@ def load_models(model):
             print("Finding CV models...")
             load_cv_models(model)
             trained = 'trained'
-            
+        case "nn":
+            print("Finding NN models...")
+            load_nn_models(model)
+            trained = 'trained'
         case _:
             print("Invalid model")
             trained = 'not trained'
@@ -90,13 +96,13 @@ def data_extraction(data_set):
 
     # check if size already defined
     # else ask the user
+    print(" ")
     if size is None:
-        if input("resize image (for squared final images (needed for PCA/SVC))? (y/n) ") == 'y':
-            size = int(input("define size of the image (x, x) (0 for not resizing): "))
+        size = int(input("define size of the image (x, x) (0 for not resizing): "))
     else:
         print("size already defined (" + str(size) + ')')
         if input("is it correct? (y/n) ") == 'n':
-            size = int(input("define size of the image (x, x) (0 for not resizing): "))
+            size = int(input("define size of the image (x, x): "))
             if size == 0:
                 size = None
 
@@ -138,7 +144,7 @@ def data_extraction(data_set):
     end_file_time_2 = time.time()
 
     # print the time taken to extract the data
-    print(f"Time taken to extract family data: {end_file_time_1 - start_file_time_1:.2f} seconds")
+    print(f"\nTime taken to extract family data: {end_file_time_1 - start_file_time_1:.2f} seconds")
     print(f"Time taken to extract manufacturer data: {end_file_time_2 - start_file_time_2:.2f} seconds")
     print(f"Total time taken: {end_file_time_2 - start_time:.2f} seconds")
     return f_images, f_labels, m_images, m_labels
@@ -155,6 +161,8 @@ def file_extractor(data_path, data_set, gray):
     # initializing arrays
     m_images = []
     m_labels = []
+
+    print(" ")
 
     # get the number of lines in the file
     with open(data_path, "rb") as f:
