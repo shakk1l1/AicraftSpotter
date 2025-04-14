@@ -170,6 +170,7 @@ def command(model, train_status):
             print('     test: test the model')
             print('     model: change the model')
             print('     predict: predict specific image')
+            print('     param: show the parameters of the trained model')
             pass
         case "esc":
             # Escape the program
@@ -353,6 +354,35 @@ def command(model, train_status):
             show_image("0034309")
             pass
 
+        case "param":
+            # Show the parameters of the model
+            if train_status == "not trained" or model == 'None':       # check if a model is selected and trained
+                print("No model selected or training done, please select and train a model")
+            else:
+                if "svc" in model:
+                    temporary_model = "svc"
+                elif "lreg" in model:
+                    temporary_model = "lreg"
+                elif "cv" in model:
+                    temporary_model = "cv"
+                elif "nn" in model:
+                    temporary_model = "nn"
+                else:
+                    temporary_model = model
+
+                match temporary_model:
+                    case "svc":
+                        print("Showing parameters of svc...")
+                        svc_param()
+                    case "lreg":
+                        print("Showing parameters of linear regression...")
+                        lreg_param()
+                    case "cv":
+                        print("Showing parameters of cross validation...")
+                        cv_param()
+                    case "nn":
+                        print("Showing parameters of neural network...")
+                        nn_param()
         case _:
             # Handle unknown commands
             print("unknown command")

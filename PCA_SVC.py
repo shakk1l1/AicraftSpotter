@@ -386,3 +386,39 @@ def svc_test_s(data, label, D_m, clf, pca):
     if pca is not None:
         print(f"pca time: {end_pca - start_pca:.2f} seconds")
     print(f"total testing time: {end_predict_2 - start:.2f} seconds")
+
+def svc_param(model):
+    """
+    sow the parameters for the SVC model
+    :return:
+    """
+    from data_extract import size, gray
+    print(" ")
+    print("Showing model parameters")
+    print("size of the image: " + str(size))
+    print("gray scale: " + str(gray))
+
+    print(" ")
+    if f_pca is None:
+        print("no pca used")
+    else:
+        chosen_components = f_pca.n_components_
+        print(f"Number of components chosen for PCA: {chosen_components}")
+        explained_variance = sum(f_pca.explained_variance_ratio_) * 100
+        print(f"Percentage of variance explained by the chosen components: {explained_variance:.2f}%")
+    print(f"Kernel used: {f_clf.kernel}")
+    if f_clf.kernel == 'poly':
+        print(f"Degree of the polynomial kernel: {f_clf.degree}")
+
+    print(" ")
+    print("manufacturer model parameters")
+    if m_pca is None:
+        print("no pca used")
+    else:
+        chosen_components = m_pca.n_components_
+        print(f"Number of components chosen for PCA: {chosen_components}")
+        explained_variance = sum(m_pca.explained_variance_ratio_) * 100
+        print(f"Percentage of variance explained by the chosen components: {explained_variance:.2f}%")
+    print(f"Kernel used: {m_clf.kernel}")
+    if m_clf.kernel == 'poly':
+        print(f"Degree of the polynomial kernel: {m_clf.degree}")

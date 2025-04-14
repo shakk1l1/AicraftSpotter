@@ -419,3 +419,39 @@ def cv_test_s(data, label, D_m, clf, pca, le):
     if pca is not None:
         print(f"pca time: {end_pca - start_pca:.2f} seconds")
     print(f"total testing time: {end_predict_3 - start:.2f} seconds")
+
+def cv_param(model):
+    """
+    show the parameters of the model
+    :param model:
+    :return:
+    """
+    from data_extract import size, gray
+    print(" ")
+    print("Showing model parameters")
+    print("size of the image: " + str(size))
+    print("gray scale: " + str(gray))
+
+    print(" ")
+    print("family model parameters")
+    if f_pca is None:
+        print("no pca used")
+    else:
+        chosen_components = f_pca.n_components_
+        print(f"Number of components chosen for PCA: {chosen_components}")
+        explained_variance = sum(f_pca.explained_variance_ratio_) * 100
+        print(f"Percentage of variance explained by the chosen components: {explained_variance:.2f}%")
+    cv_coefficient = f_clf.cv
+    print(f"Cross-validation coefficient (number of folds): {cv_coefficient}")
+
+    print(" ")
+    print("manufacturer model parameters")
+    if m_pca is None:
+        print("no pca used")
+    else:
+        chosen_components = m_pca.n_components_
+        print(f"Number of components chosen for PCA: {chosen_components}")
+        explained_variance = sum(m_pca.explained_variance_ratio_) * 100
+        print(f"Percentage of variance explained by the chosen components: {explained_variance:.2f}%")
+    cv_coefficient = m_clf.cv
+    print(f"Cross-validation coefficient (number of folds): {cv_coefficient}")

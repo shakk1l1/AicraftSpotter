@@ -213,7 +213,7 @@ def file_extractor(data_path, data_set, gray):
             m_labels.append(manufacturer)
 
             # print the progress
-            if (round(i / num_lines, 1) * 100) % 2 == 0:
+            if (round(i / num_lines * 100, 0)) % 2 == 0:
                 print('\r' + ' ' * 50, end='', flush=True)  # Clear the line
                 print('\r', end='', flush=True)  # Move the cursor back to the
                 print("extracting " + data_set + " data... " + str((i / num_lines) * 100) + "%" + f"  time per file: {time.time() - start:.2f} seconds", end='', flush=True)

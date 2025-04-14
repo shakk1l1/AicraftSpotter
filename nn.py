@@ -20,8 +20,8 @@ from database import get_image_data
 print("Using GPU for Neural Networks" if torch.cuda.is_available() else "Using CPU for Neural Networks, no GPU available. \nMaybe du to a non NVIDIA GPU")
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # Global variables
-f_input_size, f_hidden_size, f_num_layers, f_num_classes = None, None, None, None
-m_input_size, m_hidden_size, m_num_layers, m_num_classes = None, None, None, None
+f_input_size, f_hidden_size, f_num_layers, f_num_classes, f_learning_rate, f_num_epochs = None, None, None, None, None, None
+m_input_size, m_hidden_size, m_num_layers, m_num_classes, m_learning_rate, m_num_epochs = None, None, None, None, None, None
 le_fam = None
 le_man = None
 # These variables are used to store the models and data
@@ -52,11 +52,15 @@ def load_nn_models(model):
     f_hidden_size = joblib.load(os.path.join(path, 'models/' + model, 'f_hidden_size.pkl'))
     f_num_layers = joblib.load(os.path.join(path, 'models/' + model, 'f_num_layers.pkl'))
     f_num_classes = joblib.load(os.path.join(path, 'models/' + model, 'f_num_classes.pkl'))
+    f_learning_rate = joblib.load(os.path.join(path, 'models/' + model, 'f_learning_rate.pkl'))
+    f_num_epochs = joblib.load(os.path.join(path, 'models/' + model, 'f_num_epochs.pkl'))
 
     m_input_size = joblib.load(os.path.join(path, 'models/' + model, 'm_input_size.pkl'))
     m_hidden_size = joblib.load(os.path.join(path, 'models/' + model, 'm_hidden_size.pkl'))
     m_num_layers = joblib.load(os.path.join(path, 'models/' + model, 'm_num_layers.pkl'))
     m_num_classes = joblib.load(os.path.join(path, 'models/' + model, 'm_num_classes.pkl'))
+    m_learning_rate = joblib.load(os.path.join(path, 'models/' + model, 'm_learning_rate.pkl'))
+    m_num_epochs = joblib.load(os.path.join(path, 'models/' + model, 'm_num_epochs.pkl'))
 
     # call the function to change size and gray
     change_size(model)
@@ -82,9 +86,11 @@ def hyperparameters_selector(models):
             learning_rate = 0.005
             num_epochs = 100
     return hidden_size, num_layers, learning_rate, num_epochs
+
+
 def nn_train(data_family, label_family, data_manufacturer, label_manufacturer, model):
-    global f_input_size, f_hidden_size, f_num_layers, f_num_classes
-    global m_input_size, m_hidden_size, m_num_layers, m_num_classes
+    global f_input_size, f_hidden_size, f_num_layers, f_num_classes, le_fam
+    global m_input_size, m_hidden_size, m_num_layers, m_num_classes, le_man
     from data_extract import size
     if input("\nDo you wish to use the same hyperparameters for both models? (y/n)").lower() == 'y':
         # Select hyperparameters for both models
@@ -92,22 +98,27 @@ def nn_train(data_family, label_family, data_manufacturer, label_manufacturer, m
     else:
         hidden_size, num_layers, learning_rate, num_epochs = None, None, None, None
     print("\nTraining family model...")
-    f_input_size, f_hidden_size, f_num_layers, f_num_classes, le_fam = nn_train_s(data_family, label_family, model, size, "f_", hidden_size, num_layers, learning_rate, num_epochs)
+    f_input_size, f_hidden_size, f_num_layers, f_num_classes, le_fam, f_learning_rate, f_num_epochs = nn_train_s(data_family, label_family, model, size, "f_", hidden_size, num_layers, learning_rate, num_epochs)
     print("\nTraining manufacturer model...")
-    m_input_size, m_hidden_size, m_num_layers, m_num_classes, le_man = nn_train_s(data_manufacturer, label_manufacturer, model, size, "m_", hidden_size, num_layers, learning_rate, num_epochs)
+    m_input_size, m_hidden_size, m_num_layers, m_num_classes, le_man, m_learning_rate, m_num_epochs = nn_train_s(data_manufacturer, label_manufacturer, model, size, "m_", hidden_size, num_layers, learning_rate, num_epochs)
 
     # Save the models
     joblib.dump(le_fam, os.path.join(path, 'models/' + model, 'le_fam.pkl'))
     joblib.dump(le_man, os.path.join(path, 'models/' + model, 'le_man.pkl'))
+
     joblib.dump(f_input_size, os.path.join(path, 'models/' + model, 'f_input_size.pkl'))
     joblib.dump(f_hidden_size, os.path.join(path, 'models/' + model, 'f_hidden_size.pkl'))
     joblib.dump(f_num_layers, os.path.join(path, 'models/' + model, 'f_num_layers.pkl'))
     joblib.dump(f_num_classes, os.path.join(path, 'models/' + model, 'f_num_classes.pkl'))
+    joblib.dump(f_learning_rate, os.path.join(path, 'models/' + model, 'f_learning_rate.pkl'))
+    joblib.dump(f_num_epochs, os.path.join(path, 'models/' + model, 'f_num_epochs.pkl'))
 
     joblib.dump(m_input_size, os.path.join(path, 'models/' + model, 'm_input_size.pkl'))
     joblib.dump(m_hidden_size, os.path.join(path, 'models/' + model, 'm_hidden_size.pkl'))
     joblib.dump(m_num_layers, os.path.join(path, 'models/' + model, 'm_num_layers.pkl'))
     joblib.dump(m_num_classes, os.path.join(path, 'models/' + model, 'm_num_classes.pkl'))
+    joblib.dump(m_learning_rate, os.path.join(path, 'models/' + model, 'm_learning_rate.pkl'))
+    joblib.dump(m_num_epochs, os.path.join(path, 'models/' + model, 'm_num_epochs.pkl'))
 
     # import last version of size and gray
     from data_extract import size, gray
@@ -136,7 +147,7 @@ def nn_train_s(data, label, sel_model, size, using_set, hidden_size=None, num_la
         hidden_size, num_layers, learning_rate, num_epochs = hyperparameters_selector(sel_model)
 
     # Create the model, loss function, and optimizer
-    model = FCNNClassifier(input_size, hidden_size, num_layers, num_classes)
+    model = FCNNClassifier_linear(input_size, hidden_size, num_layers, num_classes)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -199,7 +210,7 @@ def nn_train_s(data, label, sel_model, size, using_set, hidden_size=None, num_la
     if not os.path.exists(os.path.join(path, 'models/' + sel_model)):
         os.makedirs(os.path.join(path, 'models/' + sel_model))
     torch.save(model.state_dict(), os.path.join(path, 'models/' + sel_model, using_set + 'NN.pth'))
-    return input_size, hidden_size, num_layers, num_classes, le
+    return input_size, hidden_size, num_layers, num_classes, le, learning_rate, num_epochs
 
 
 
@@ -232,11 +243,11 @@ def nn_predict(image_name, model):
     end_extract = time.time()
 
     # load the models
-    NN_fam = FCNNClassifier(f_input_size, f_hidden_size, f_num_layers, f_num_classes)
+    NN_fam = FCNNClassifier_linear(f_input_size, f_hidden_size, f_num_layers, f_num_classes)
     NN_fam.load_state_dict(torch.load(os.path.join(path, 'models/' + model, 'f_NN.pth')))
     NN_fam.eval()  # Set the model to evaluation mode
 
-    NN_man = FCNNClassifier(m_input_size, m_hidden_size, m_num_layers, m_num_classes)
+    NN_man = FCNNClassifier_linear(m_input_size, m_hidden_size, m_num_layers, m_num_classes)
     NN_man.load_state_dict(torch.load(os.path.join(path, 'models/' + model, 'm_NN.pth')))
     NN_man.eval()  # Set the model to evaluation mode
 
@@ -292,7 +303,7 @@ def nn_test_s(data, label, used_set, used_model):
         le = le_man
 
     label = le.transform(label)
-    model = FCNNClassifier(input_size, hidden_size, num_layers, num_classes)
+    model = FCNNClassifier_linear(input_size, hidden_size, num_layers, num_classes)
     model.load_state_dict(torch.load(os.path.join(path, 'models/' + used_model, used_set + 'NN.pth')))
     model.eval()  # Set the model to evaluation mode
 
@@ -324,12 +335,37 @@ def nn_test_s(data, label, used_set, used_model):
     print(f'Total time taken: {accuracy_e_time - accuracy_e_time:.2f} seconds')
     
     
+def nn_param():
+    from data_extract import size, gray
+    print(" ")
+    print("Showing model parameters")
+    print("size of the image: " + str(size))
+    print("gray scale: " + str(gray))
+    if f_input_size == m_input_size or f_hidden_size == m_hidden_size or f_num_layers == m_num_layers or f_num_classes == m_num_classes:
+        print("The two models (family/manufacturer) have the same parameters")
+        print("learning rate: " + str(f_learning_rate))
+        print("hidden size: " + str(f_hidden_size))
+        print("number of layers: " + str(f_num_layers))
+        print("number of epochs: " + str(f_num_epochs))
 
+    print(" ")
+    print("Family model parameters:")
+    print("learning rate: " + str(f_learning_rate))
+    print("hidden size: " + str(f_hidden_size))
+    print("number of layers: " + str(f_num_layers))
+    print("number of epochs: " + str(f_num_epochs))
 
-class FCNNClassifier(nn.Module):
+    print(" ")
+    print("Manufacturer model parameters:")
+    print("learning rate: " + str(m_learning_rate))
+    print("hidden size: " + str(m_hidden_size))
+    print("number of layers: " + str(m_num_layers))
+    print("number of epochs: " + str(m_num_epochs))
+
+class FCNNClassifier_linear(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers, num_classes):
 
-        super(FCNNClassifier, self).__init__()
+        super(FCNNClassifier_linear, self).__init__()
 
         # Create a list to hold all layers
         self.layers = nn.ModuleList()
