@@ -10,6 +10,7 @@ import torchvision.transforms as transforms
 import time
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import LabelEncoder
+from progressbar import progressbar
 
 from path import path
 import numpy as np
@@ -160,7 +161,7 @@ def nn_train_s(data, label, sel_model, size, using_set, hidden_size=None, num_la
     print(" ")
     print("Training the model...")
 
-    for epoch in range(num_epochs):
+    for epoch in progressbar(range(num_epochs), redirect_stdout=True):
         # Forward pass
         outputs = model(train_images.float())
         loss = criterion(outputs, train_labels)

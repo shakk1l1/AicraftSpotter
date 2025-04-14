@@ -1,6 +1,8 @@
 ## imports
 import os
 import cv2
+
+from progressbar import progressbar
 from PCA_SVC import load_svc_models
 from lreg import load_lreg_models
 from cv import load_cv_models
@@ -144,9 +146,7 @@ def data_extraction(data_set):
     end_file_time_2 = time.time()
 
     # print the time taken to extract the data
-    print(f"\nTime taken to extract family data: {end_file_time_1 - start_file_time_1:.2f} seconds")
-    print(f"Time taken to extract manufacturer data: {end_file_time_2 - start_file_time_2:.2f} seconds")
-    print(f"Total time taken: {end_file_time_2 - start_time:.2f} seconds")
+    print(f"\nTotal time taken: {end_file_time_2 - start_time:.2f} seconds")
     return f_images, f_labels, m_images, m_labels
 
 def file_extractor(data_path, data_set, gray):
@@ -169,55 +169,52 @@ def file_extractor(data_path, data_set, gray):
         num_lines = sum(1 for _ in f)
 
     # open the file and extract the data
-    with open(data_path, 'r') as file:
-        i = 0
-        for line in file:
-            start = time.time()
-            # Process each line as needed and split the line in parts
-            # Assuming the first part is the image name and the rest are labels
-            # split the line at the first space
-            parts = re.split(' ', line, maxsplit=1)
-            image_name = parts[0]
-            manufacturer = parts[1].removesuffix('\n')
+    file = open(data_path, "r")
+    lines = file.readlines()
+    file.close()
+    for i in progressbar(range(num_lines)):
+        # get the i th line
+        line = lines[i]
+        start = time.time()
+        # Process each line as needed and split the line in parts
+        # Assuming the first part is the image name and the rest are labels
+        # split the line at the first space
+        parts = re.split(' ', line, maxsplit=1)
+        image_name = parts[0]
+        manufacturer = parts[1].removesuffix('\n')
 
-            # read the image and put it like a list
-            if gray:
-                img = cv2.imread(os.path.join(path + '/images', image_name + '.jpg'), cv2.IMREAD_GRAYSCALE)
-            else:
-                img = cv2.imread(os.path.join(path + '/images', image_name + '.jpg'))
+        # read the image and put it like a list
+        if gray:
+            img = cv2.imread(os.path.join(path + '/images', image_name + '.jpg'), cv2.IMREAD_GRAYSCALE)
+        else:
+            img = cv2.imread(os.path.join(path + '/images', image_name + '.jpg'))
 
-            # get the crop ratio from the database
-            values = get_image_data(image_name)
-            x1, y1, x2, y2 = values[0], values[1], values[2], values[3]
+        # get the crop ratio from the database
+        values = get_image_data(image_name)
+        x1, y1, x2, y2 = values[0], values[1], values[2], values[3]
 
-            # croping the image
-            croped_img = img[y1 + 1:y2 + 1, x1 +1:x2 +1]
+        # croping the image
+        croped_img = img[y1 + 1:y2 + 1, x1 +1:x2 +1]
 
-            # resize the image if needed
-            if size is not None:
-                # Adjust the size of the image
-                croped_img = cv2.resize(croped_img, (size, size), interpolation=cv2.INTER_AREA)
+        # resize the image if needed
+        if size is not None:
+            # Adjust the size of the image
+            croped_img = cv2.resize(croped_img, (size, size), interpolation=cv2.INTER_AREA)
 
-            # check if the image was well cropped and resized
-            # if gray:
-            #     g = 1
-            # else:
-            #     g = 3
-            # if np.array(croped_img.flatten()).shape != (size * size * g,):
-            #     print(f"Error cropping image: {image_name}")
-            #     print(f"Expected shape: {(1, size * size * 3)}, but got: {np.array(croped_img.flatten()).shape}")
-            #     return None
+        # check if the image was well cropped and resized
+        # if gray:
+        #     g = 1
+        # else:
+        #     g = 3
+        # if np.array(croped_img.flatten()).shape != (size * size * g,):
+        #     print(f"Error cropping image: {image_name}")
+        #     print(f"Expected shape: {(1, size * size * 3)}, but got: {np.array(croped_img.flatten()).shape}")
+        #     return None
 
-            # add the image and label to the arrays
-            m_images.append(croped_img.flatten())
-            m_labels.append(manufacturer)
+        # add the image and label to the arrays
+        m_images.append(croped_img.flatten())
+        m_labels.append(manufacturer)
 
-            # print the progress
-            if (round(i / num_lines * 100, 0)) % 2 == 0:
-                print('\r' + ' ' * 50, end='', flush=True)  # Clear the line
-                print('\r', end='', flush=True)  # Move the cursor back to the
-                print("extracting " + data_set + " data... " + str((i / num_lines) * 100) + "%" + f"  time per file: {time.time() - start:.2f} seconds", end='', flush=True)
-            i += 1
     return m_images, m_labels
 
 def change_size(model):

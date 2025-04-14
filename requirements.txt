@@ -8,3 +8,5 @@ fonttools
 joblib
 torch
 torchvision
+alive-progress
+progressbar2
