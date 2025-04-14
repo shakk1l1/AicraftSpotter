@@ -191,7 +191,7 @@ def nn_train_s(data, label, sel_model, size, using_set, hidden_size=None, num_la
 
     print(" ")
     print("Training the model...")
-    with alive_bar(num_epochs, force_tty=True) as bar:
+    with alive_bar(num_epochs, force_tty=True, max_cols=os.get_terminal_size().columns) as bar:
         for epoch in range(num_epochs):
             # Forward pass
             outputs = model(train_images.float())
