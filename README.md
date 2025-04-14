@@ -42,3 +42,8 @@ inferring - as best as you could :
 dataset and testing on the images_manufacturer_test.txt
 * the aircraft family, by training the model on the images_family_trainval.txt
 dataset and testing on the images_family_test.txt
+
+## How does it works
+
+This program is a command based program. All interaction with it is done by using pre-determined command.
+All the command available are display when typing help in the command tab.
