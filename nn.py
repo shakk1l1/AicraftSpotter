@@ -190,7 +190,8 @@ def nn_train_s(data, label, sel_model, size, using_set, hidden_size=None, num_la
     start_time = time.time()
 
     print(" ")
-    with alive_bar(num_epochs, title="Training the model...", force_tty=True) as bar:
+    print("Training the model...")
+    with alive_bar(num_epochs, force_tty=True) as bar:
         for epoch in range(num_epochs):
             # Forward pass
             outputs = model(train_images.float())

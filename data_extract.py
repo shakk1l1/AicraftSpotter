@@ -173,7 +173,8 @@ def file_extractor(data_path, data_set, gray):
     file = open(data_path, "r")
     lines = file.readlines()
     file.close()
-    with alive_bar(num_lines, title=f"Extracting {data_set} data", force_tty=True) as bar:
+    print(f"Extracting {data_set} data...")
+    with alive_bar(num_lines, force_tty=True) as bar:
         for i in range(num_lines):
             # get the i th line
             line = lines[i]
