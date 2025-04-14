@@ -62,13 +62,39 @@ def load_nn_models(model):
     change_size(model)
     print("Models loaded")
 
-
+def hyperparameters_selector(models):
+    match models:
+        case "cl_nn":
+            print("\nselect the hyperparameters for your model:")
+            print("1. hidden size (integer)")
+            hidden_size = int(input("=> "))
+            print("2. number of layers (integer)")
+            num_layers = int(input("=> "))
+            print("3. learning rate (float)")
+            learning_rate = float(input("=> "))
+            print("4. number of epochs (integer)")
+            num_epochs = int(input("=> "))
+        case _:
+            print("\nunknown model")
+            print("selecting base hyperparameters")
+            hidden_size = 128
+            num_layers = 2
+            learning_rate = 0.005
+            num_epochs = 100
+    return hidden_size, num_layers, learning_rate, num_epochs
 def nn_train(data_family, label_family, data_manufacturer, label_manufacturer, model):
     global f_input_size, f_hidden_size, f_num_layers, f_num_classes
     global m_input_size, m_hidden_size, m_num_layers, m_num_classes
     from data_extract import size
-    f_input_size, f_hidden_size, f_num_layers, f_num_classes, le_fam = nn_train_s(data_family, label_family, model, size, "f_")
-    m_input_size, m_hidden_size, m_num_layers, m_num_classes, le_man = nn_train_s(data_manufacturer, label_manufacturer, model, size, "m_")
+    if input("\nDo you wish to use the same hyperparameters for both models? (y/n)").lower() == 'y':
+        # Select hyperparameters for both models
+        hidden_size, num_layers, learning_rate, num_epochs = hyperparameters_selector(model)
+    else:
+        hidden_size, num_layers, learning_rate, num_epochs = None, None, None, None
+    print("\nTraining family model...")
+    f_input_size, f_hidden_size, f_num_layers, f_num_classes, le_fam = nn_train_s(data_family, label_family, model, size, "f_", hidden_size, num_layers, learning_rate, num_epochs)
+    print("\nTraining manufacturer model...")
+    m_input_size, m_hidden_size, m_num_layers, m_num_classes, le_man = nn_train_s(data_manufacturer, label_manufacturer, model, size, "m_", hidden_size, num_layers, learning_rate, num_epochs)
 
     # Save the models
     joblib.dump(le_fam, os.path.join(path, 'models/' + model, 'le_fam.pkl'))
@@ -88,9 +114,10 @@ def nn_train(data_family, label_family, data_manufacturer, label_manufacturer, m
     joblib.dump(size, os.path.join(path, 'models/' + model, 'size.pkl'))
     joblib.dump(gray, os.path.join(path, 'models/' + model, 'gray.pkl'))
 
-def nn_train_s(data, label, sel_model, size, using_set):
+def nn_train_s(data, label, sel_model, size, using_set, hidden_size=None, num_layers=None, learning_rate=None, num_epochs=None):
 
     # Convert entire datasets to tensors
+    print("Converting data to tensors...")
     data = np.array(data)
     label = np.array(label)
     le = LabelEncoder()
@@ -100,14 +127,13 @@ def nn_train_s(data, label, sel_model, size, using_set):
     train_labels = torch.from_numpy(encoded_labels)
 
     # Hyperparameters
+    print("defining hyperparameters")
     input_size = size * size
-
-    # TODO: let the user choose the size of the NN / Hyperparameters
-    hidden_size = 128
-    num_layers = 2
     num_classes = len(le.classes_)  # Number of unique labels
-    learning_rate = 0.005
-    num_epochs = 100
+
+    if hidden_size is None or num_layers is None or learning_rate is None or num_epochs is None:
+        # Select hyperparameters
+        hidden_size, num_layers, learning_rate, num_epochs = hyperparameters_selector(sel_model)
 
     # Create the model, loss function, and optimizer
     model = FCNNClassifier(input_size, hidden_size, num_layers, num_classes)
@@ -121,6 +147,7 @@ def nn_train_s(data, label, sel_model, size, using_set):
     start_time = time.time()
 
     print(" ")
+    print("Training the model...")
 
     for epoch in range(num_epochs):
         # Forward pass

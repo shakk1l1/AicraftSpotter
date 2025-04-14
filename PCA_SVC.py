@@ -71,8 +71,8 @@ def svc_train(data_family, label_family, data_manufacturer, label_manufacturer, 
 
     print("svc training")
 
-    if input("use PCA? (y/n) ") == 'y':
-        if input("apply the same PCA on the two data sets? (y/n) ") == 'y':
+    if input("use PCA? (y/n) ").lower() == 'y':
+        if input("apply the same PCA on the two data sets? (y/n) ").lower() == 'y':
             spca = n_components_selecter()
         else:
             spca = None
@@ -175,7 +175,7 @@ def svc_train_s(data, label, model, spca):
         A = D0_train
         pca = None
 
-    if input("plot eigenvalues distribution? (y/n) ") == 'y':
+    if input("plot eigenvalues distribution? (y/n) ").lower() == 'y':
         # Plot the distribution of the eigenvalues
         plt.title("Eigenvalues distribution")
         plt.xlabel("Eigenvalue index")
@@ -185,7 +185,7 @@ def svc_train_s(data, label, model, spca):
         plt.show()
 
 
-    if input("plot the distribution of the pca coefficients ? (y/n) ") == 'y':
+    if input("plot the distribution of the pca coefficients ? (y/n) ").lower() == 'y':
         plt.title("pca coefficients distribution")
         plt.xlabel("pca coefficient index")
         plt.ylabel("pca coefficient")

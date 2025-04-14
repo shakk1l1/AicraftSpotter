@@ -101,23 +101,23 @@ def data_extraction(data_set):
         size = int(input("define size of the image (x, x) (0 for not resizing): "))
     else:
         print("size already defined (" + str(size) + ')')
-        if input("is it correct? (y/n) ") == 'n':
+        if input("is it correct? (y/n) ").lower() == 'n':
             size = int(input("define size of the image (x, x): "))
             if size == 0:
                 size = None
 
     # check if gray already defined
     if gray is None:
-        if input("gray scale the image? (y/n) ") == 'y':
+        if input("gray scale the image? (y/n) ").lower() == 'y':
             gray = True
         else:
             gray = False
     else:
         print("gray scaling already defined (" + str(gray) + ')')
-        if input("is it correct? (y/n) ") == 'y':
+        if input("is it correct? (y/n) ").lower() == 'y':
             gray = gray
         else:
-            if input("gray scale the image? (y/n) ") == 'y':
+            if input("gray scale the image? (y/n) ").lower() == 'y':
                 gray = True
             else:
                 gray = False

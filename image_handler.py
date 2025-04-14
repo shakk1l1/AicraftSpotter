@@ -32,12 +32,12 @@ def show_image(image_number):
 
     # Read the image using OpenCV
     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-    if input("crop image? (y/n) ") == 'y':
+    if input("crop image? (y/n) ").lower() == 'y':
         # Crop the image
         x1, y1, x2, y2 = get_image_data(image_number)
         image = image[y1 + 1:y2 + 1, x1 +1:x2 +1]
         print("cropped image")
-    if input("resize image? (y/n) ") == 'y':
+    if input("resize image? (y/n) ").lower() == 'y':
         size = int(input("size of the image (x, x): "))
         image = cv2.resize(image, (size, size), interpolation=cv2.INTER_AREA)
 
