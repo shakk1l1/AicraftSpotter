@@ -1,6 +1,7 @@
 ## imports
 import os
 import cv2
+from alive_progress import alive_bar
 
 from progressbar import progressbar
 from PCA_SVC import load_svc_models
@@ -172,48 +173,50 @@ def file_extractor(data_path, data_set, gray):
     file = open(data_path, "r")
     lines = file.readlines()
     file.close()
-    for i in progressbar(range(num_lines)):
-        # get the i th line
-        line = lines[i]
-        start = time.time()
-        # Process each line as needed and split the line in parts
-        # Assuming the first part is the image name and the rest are labels
-        # split the line at the first space
-        parts = re.split(' ', line, maxsplit=1)
-        image_name = parts[0]
-        manufacturer = parts[1].removesuffix('\n')
+    with alive_bar(num_lines, title=f"Extracting {data_set} data", force_tty=True) as bar:
+        for i in range(num_lines):
+            # get the i th line
+            line = lines[i]
+            start = time.time()
+            # Process each line as needed and split the line in parts
+            # Assuming the first part is the image name and the rest are labels
+            # split the line at the first space
+            parts = re.split(' ', line, maxsplit=1)
+            image_name = parts[0]
+            manufacturer = parts[1].removesuffix('\n')
 
-        # read the image and put it like a list
-        if gray:
-            img = cv2.imread(os.path.join(path + '/images', image_name + '.jpg'), cv2.IMREAD_GRAYSCALE)
-        else:
-            img = cv2.imread(os.path.join(path + '/images', image_name + '.jpg'))
+            # read the image and put it like a list
+            if gray:
+                img = cv2.imread(os.path.join(path + '/images', image_name + '.jpg'), cv2.IMREAD_GRAYSCALE)
+            else:
+                img = cv2.imread(os.path.join(path + '/images', image_name + '.jpg'))
 
-        # get the crop ratio from the database
-        values = get_image_data(image_name)
-        x1, y1, x2, y2 = values[0], values[1], values[2], values[3]
+            # get the crop ratio from the database
+            values = get_image_data(image_name)
+            x1, y1, x2, y2 = values[0], values[1], values[2], values[3]
 
-        # croping the image
-        croped_img = img[y1 + 1:y2 + 1, x1 +1:x2 +1]
+            # croping the image
+            croped_img = img[y1 + 1:y2 + 1, x1 +1:x2 +1]
 
-        # resize the image if needed
-        if size is not None:
-            # Adjust the size of the image
-            croped_img = cv2.resize(croped_img, (size, size), interpolation=cv2.INTER_AREA)
+            # resize the image if needed
+            if size is not None:
+                # Adjust the size of the image
+                croped_img = cv2.resize(croped_img, (size, size), interpolation=cv2.INTER_AREA)
 
-        # check if the image was well cropped and resized
-        # if gray:
-        #     g = 1
-        # else:
-        #     g = 3
-        # if np.array(croped_img.flatten()).shape != (size * size * g,):
-        #     print(f"Error cropping image: {image_name}")
-        #     print(f"Expected shape: {(1, size * size * 3)}, but got: {np.array(croped_img.flatten()).shape}")
-        #     return None
+            # check if the image was well cropped and resized
+            # if gray:
+            #     g = 1
+            # else:
+            #     g = 3
+            # if np.array(croped_img.flatten()).shape != (size * size * g,):
+            #     print(f"Error cropping image: {image_name}")
+            #     print(f"Expected shape: {(1, size * size * 3)}, but got: {np.array(croped_img.flatten()).shape}")
+            #     return None
 
-        # add the image and label to the arrays
-        m_images.append(croped_img.flatten())
-        m_labels.append(manufacturer)
+            # add the image and label to the arrays
+            m_images.append(croped_img.flatten())
+            m_labels.append(manufacturer)
+            bar()
 
     return m_images, m_labels
 

@@ -11,7 +11,7 @@ from image_handler import *
 from nn import *
 from main import image_list
 
-model_list = ['svc', 'lsvc', 'psvc', 'lreg-lasso', 'lreg-lsr', 'lreg-ridge', 'cv-ridge', 'cv-lasso', 'cl_nn']      # list of models available
+model_list = ['svc', 'lsvc', 'psvc', 'lreg-lasso', 'lreg-lsr', 'lreg-ridge', 'cv-ridge', 'cv-lasso', 'cl_nn', 'improved_nn']      # list of models available
 
 def commandpath():
     """
@@ -97,6 +97,11 @@ def command_model(actual_model=None, actual_train_status=None):
         temporary_model = "nn"
     else:
         temporary_model = model
+
+    if temporary_model in actual_model:      # check if the model is already selected
+        print("new variant selected of the same model")
+        print("cannot keep the previous training")
+        return model, "not trained"      # reset the training status
 
     match temporary_model:
         case "svc":
@@ -251,6 +256,10 @@ def command(model, train_status):
                         train_status = "trained"
                     case "cl_nn":
                         print("training with conventional linear neural network")
+                        nn_train(f_train_data, f_train_label, m_train_data, m_train_label, model)
+                        train_status = "trained"
+                    case "improved_nn":
+                        print("training with improved neural network")
                         nn_train(f_train_data, f_train_label, m_train_data, m_train_label, model)
                         train_status = "trained"
                     case _:
