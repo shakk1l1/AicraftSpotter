@@ -194,7 +194,7 @@ def nn_train_s(data, label, sel_model, size, using_set, hidden_size=None, num_la
 
     print(" ")
     print("Training the model...")
-    with alive_bar(num_epochs, force_tty=True, max_cols=os.get_terminal_size().columns) as bar:
+    with alive_bar(num_epochs, force_tty=True, max_cols=270) as bar:
         for epoch in range(num_epochs):
             #TODO: train using image by image
             # Forward pass
