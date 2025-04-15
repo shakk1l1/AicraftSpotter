@@ -101,7 +101,7 @@ def data_extraction(data_set):
     # else ask the user
     print(" ")
     if size is None:
-        size = int(input("define size of the image (x, x) (0 for not resizing): "))
+        size = int(input("define size of the image (x, x): "))
     else:
         print("size already defined (" + str(size) + ')')
         if input("is it correct? (y/n) ").lower() == 'n':

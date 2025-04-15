@@ -382,6 +382,13 @@ def nn_test_s(data, label, used_set, used_model, D_m):
     accuracy_s_time = time.time()
     _, test_predicted = torch.max(test_outputs.data, 1)
     test_accuracy = 100 * (test_predicted == test_labels).sum().item() / len(test_labels)
+    # calculate partial accuracy for each individual classes/labels
+    class_accuracy = []
+    for i in set(test_labels):
+        accuracy = 100 * (test_predicted[test_labels == i] == test_labels[test_labels == i]).sum().item() / len(test_labels[test_labels == i])
+        class_accuracy.append(accuracy)
+        print(class_accuracy)
+
     accuracy_e_time = time.time()
     print(f'Test Accuracy: {test_accuracy:.2f}%')
     
