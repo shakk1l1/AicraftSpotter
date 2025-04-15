@@ -10,3 +10,4 @@ torch
 torchvision
 alive-progress
 progressbar2
+lightning

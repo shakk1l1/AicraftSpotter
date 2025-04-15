@@ -215,6 +215,8 @@ def file_extractor(data_path, data_set, gray):
             #     return None
 
             # add the image and label to the arrays
+            #TODO: add possibility to not flatten the image for the nn
+            #   or use torchvision.io.read_image
             m_images.append(croped_img.flatten())
             m_labels.append(manufacturer)
             bar()

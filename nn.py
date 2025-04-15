@@ -12,6 +12,9 @@ import matplotlib.pyplot as plt
 from alive_progress import alive_bar
 from sklearn.preprocessing import LabelEncoder
 from progressbar import progressbar
+import lightning as L
+import torch.nn.functional as F # nn.functional give us access to the activation and loss functions.
+from torch.optim import Adam # optim contains many optimizers. This time we're using Adam
 
 from path import path
 import numpy as np
@@ -193,6 +196,7 @@ def nn_train_s(data, label, sel_model, size, using_set, hidden_size=None, num_la
     print("Training the model...")
     with alive_bar(num_epochs, force_tty=True, max_cols=os.get_terminal_size().columns) as bar:
         for epoch in range(num_epochs):
+            #TODO: train using image by image
             # Forward pass
             outputs = model(train_images.float())
             loss = criterion(outputs, train_labels)
@@ -350,6 +354,7 @@ def nn_test_s(data, label, used_set, used_model, D_m):
             model = FCNNClassifier_linear(input_size, hidden_size, num_layers, num_classes)
         case "improved_nn":
             model = ImprovedFCNNClassifier(input_size, hidden_size, num_layers, num_classes)
+        #TODO: add the new model when devlopped
     model.load_state_dict(torch.load(os.path.join(path, 'models/' + used_model, used_set + 'NN.pth')))
     model.eval()  # Set the model to evaluation mode
 
@@ -482,3 +487,108 @@ class ImprovedFCNNClassifier(nn.Module):
                 nn.init.xavier_uniform_(layer.weight)
                 if layer.bias is not None:
                     nn.init.zeros_(layer.bias)
+
+## based from a book: The StatQuest Illustrated Guide to Neural Networks and AI: With hands-on examples in PyTorch!!!
+# TODO: ameliorate and devlopp this new NN
+class myCNNClassifier(L.LightningModule):
+
+    def __init__(self, g=1, filtersize=3, poolsize=2, input_size=4, hidden_size=1, num_classes=2):
+        super().__init__()  ## We call the __init__() for the parent, LightningModule, so that it
+        ## can initialize itself as well.
+
+        ############################################################################
+        ##
+        ## Here is where we initialize the Weights and Biases for the CNN
+        ##
+        ############################################################################
+
+        ## The filter is created and applied by nn.Conv2d().
+        ## in_channels - The number of color channels that
+        ##    the image has. Our black and white image only
+        ##    has one channel. However, color pictures usually have 3.
+        ## out_channels - If we had multiple input channels, we could merge
+        ##    them down to one output. Or we can increase the number of
+        ##    output channels if we want.
+        ## kernel_size - The size of the filter (aka kernel). In this case
+        ##    we want a 3x3 filter, but you can select all kinds of sizes,
+        ##    including sizes that are more rectangular than square.
+        self.conv = nn.Conv2d(in_channels=g, out_channels=g, kernel_size=filtersize)
+
+        ## nn.MaxPool2d() does the max pooling step.
+        ## kernel_size - The size of the filter (aka kernel) that does the
+        ##    max pooling. We're using a 2x2 grid for our filter.
+        ## stride - How much to move the filter each step. In this case
+        ##    we're moving it 2 units. Thus, our 2x2 filter does max pooling
+        ##    before moving 2 units over (or down). This means that our
+        ##    max pooling filter never overlaps itself.
+        self.pool = nn.MaxPool2d(kernel_size=poolsize, stride=2)
+
+        ## Lastly, we create the "normal" neural network that has
+        ## 4 inputs, in_features=4, going to a single activation function, out_features=1,
+        ## in a single hidden layer...
+        self.input_to_hidden = nn.Linear(in_features=4, out_features=1)
+        ## ..and the single hidden layer, in_features=1, goes to
+        ## two outputs, out_features=2
+        self.hidden_to_output = nn.Linear(in_features=1, out_features=2)
+
+        ## We'll use Cross Entropy to calculate the loss between what the
+        ## neural network's predictions and actual, or known, species for
+        ## each row in the dataset.
+        ## To learn more about Cross Entropy, see: https://youtu.be/6ArSys5qHAU
+        ## NOTE: nn.CrossEntropyLoss applies a SoftMax function to the values
+        ## we give it, so we don't have to do that oursevles. However,
+        ## when we use this neural network (after it has been trained), we'll
+        ## have to remember to apply a SoftMax function to the output.
+        self.loss = nn.CrossEntropyLoss()
+
+    def forward(self, x):
+        ## First we apply a filter to the input image
+        x = self.conv(x)
+
+        ## Then we run the output from the filter through a ReLU...
+        x = F.relu(x)
+
+        ## Then we run the output from the ReLU through a Max Pooling layer...
+        x = self.pool(x)
+
+        ## Now, at this point we have a square matrix of values.
+        ## So, in order to use those values as inputs to
+        ## a neural network, we use torch.flatten() to
+        ## turn the matrix into a vector.
+        x = torch.flatten(x, 1)  # flatten all dimensions except batch
+
+        ## Now we run the flattened values through a neural network
+        ## with a single hidden layer and a single ReLU activation
+        ## function in that layer.
+        x = self.input_to_hidden(x)
+        x = F.relu(x)
+        x = self.hidden_to_output(x)
+
+        return x
+
+    def configure_optimizers(self):
+        ## In this example, configuring the optimizer
+        ## consists of passing it the weights and biases we want
+        ## to optimize, which are all in self.parameters(),
+        ## and setting the learning rate with lr=0.001.
+        return Adam(self.parameters(), lr=0.001)
+
+    def training_step(self, batch, batch_idx):
+        ## The first thing we do is split 'batch'
+        ## into the input and label values.
+        inputs, labels = batch
+
+        ## Then we run the input through the neural network
+        outputs = self.forward(inputs)
+
+        ## Then we calculate the loss.
+        loss = self.loss(outputs, labels)
+
+        ## Lastly, we could add the loss to a log file
+        ## so that we can graph it later. This would
+        ## help us decide if we have done enough training
+        ## Ideally, if we do enough training, the loss
+        ## should be small and not getting any smaller.
+        # self.log("loss", loss)
+
+        return loss

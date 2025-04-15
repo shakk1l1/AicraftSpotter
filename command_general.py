@@ -74,6 +74,7 @@ def command_model(actual_model=None, actual_train_status=None):
     print("-----------Neural Network-------------")
     print("     > Conventional Linear Neural Network => cl_nn")
     print("     > Improved Conventional Linear Neural Network => improved_nn")
+    print("     > Custom Conventional Neural Network => cc_nn (WIP)")
     print("WIP = Work In Progress")
     print("x = not working well as it use continuous data prediction, i.e. it is not a classification model\n")
     model = input("     => ")       # get the new wanted model from user
