@@ -345,7 +345,7 @@ def command(model, train_status):
                             cv_predict(image_number)
                         case "nn":
                             print("Predicting with neural network...")
-                            nn_predict(image_number)
+                            nn_predict(image_number, model)
                         case _:
                             print("unknown model")
                 else:

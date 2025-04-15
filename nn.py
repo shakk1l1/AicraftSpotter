@@ -10,6 +10,7 @@ import torchvision.transforms as transforms
 import time
 import matplotlib.pyplot as plt
 from alive_progress import alive_bar
+from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
 from progressbar import progressbar
 import lightning as L
@@ -383,11 +384,32 @@ def nn_test_s(data, label, used_set, used_model, D_m):
     _, test_predicted = torch.max(test_outputs.data, 1)
     test_accuracy = 100 * (test_predicted == test_labels).sum().item() / len(test_labels)
     # calculate partial accuracy for each individual classes/labels
+    """
     class_accuracy = []
     for i in set(test_labels):
         accuracy = 100 * (test_predicted[test_labels == i] == test_labels[test_labels == i]).sum().item() / len(test_labels[test_labels == i])
         class_accuracy.append(accuracy)
         print(class_accuracy)
+        """
+
+    test_predicted = le.inverse_transform(test_predicted.numpy()) # tensor to ndarray using .numpy()
+    test_labels = le.inverse_transform(test_labels.numpy())
+
+
+    for target_label in set(test_labels):
+        # Filtrer les indices où l'étiquette réelle correspond à "Boeing"
+        # for i, label in enumerate(test_labels)
+        #   if label == target_label:
+        #       target_indices.append(i)
+        target_indices = [i for i, label in enumerate(test_labels) if label == target_label]
+
+        # Extraire les prédictions et étiquettes réelles pour ces indices
+        filtered_predictions = [test_predicted[i] for i in target_indices]
+        filtered_true_labels = [test_labels[i] for i in target_indices]
+
+        # Calculer l'exactitude pour l'étiquette cible
+        accuracy = accuracy_score(filtered_true_labels, filtered_predictions)
+        print(f"accuracy for {target_label}: {accuracy * 100:.2f}%")
 
     accuracy_e_time = time.time()
     print(f'Test Accuracy: {test_accuracy:.2f}%')
