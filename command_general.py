@@ -384,13 +384,13 @@ def command(model, train_status):
                 match temporary_model:
                     case "svc":
                         print("Showing parameters of svc...")
-                        svc_param()
+                        svc_param(model)
                     case "lreg":
                         print("Showing parameters of linear regression...")
-                        lreg_param()
+                        lreg_param(model)
                     case "cv":
                         print("Showing parameters of cross validation...")
-                        cv_param()
+                        cv_param(model)
                     case "nn":
                         print("Showing parameters of neural network...")
                         nn_param()

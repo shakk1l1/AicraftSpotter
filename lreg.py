@@ -401,7 +401,7 @@ def lreg_test_s(data, label, D_m, clf, pca, le):
     print(f"total testing time: {end_predict_3 - start:.2f} seconds")
 
 
-def cv_param(model):
+def lreg_param(model):
     """
     show the parameters of the model
     :param model:
