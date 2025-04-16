@@ -1,4 +1,5 @@
 ## imports
+from data_extract import data_extraction, load_models
 from lreg import *
 from cv import *
 from image_handler import *
