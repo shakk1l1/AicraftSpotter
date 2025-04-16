@@ -6,7 +6,7 @@ from image_handler import *
 from nn import *
 from main import image_list
 
-model_list = ['svc', 'lsvc', 'psvc', 'lreg-lasso', 'lreg-lsr', 'lreg-ridge', 'cv-ridge', 'cv-lasso', 'cl_nn', 'improved_nn']      # list of models available
+model_list = ['svc', 'lsvc', 'psvc', 'lreg-lasso', 'lreg-lsr', 'lreg-ridge', 'cv-ridge', 'cv-lasso', 'cl_nn', 'improved_nn', 'cc_nn']      # list of models available
 
 def commandpath():
     """
@@ -257,6 +257,10 @@ def command(model, train_status):
                         train_status = "trained"
                     case "improved_nn":
                         print("training with improved neural network")
+                        nn_train(f_train_data, f_train_label, m_train_data, m_train_label, model)
+                        train_status = "trained"
+                    case "cc_nn":
+                        print("training with custom neural network")
                         nn_train(f_train_data, f_train_label, m_train_data, m_train_label, model)
                         train_status = "trained"
                     case _:

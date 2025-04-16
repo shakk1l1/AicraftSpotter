@@ -66,7 +66,7 @@ def load_models(model):
     return trained
             
 
-def data_extraction(data_set):
+def data_extraction(data_set, model=None):
     """
     Extract the data from the files
     :param data_set: the data_set to extract (train or test)
@@ -124,7 +124,7 @@ def data_extraction(data_set):
 
     # start the extraction of the first data set
     start_file_time_1 = time.time()
-    f_images, f_labels = file_extractor(f_data_path, "family", gray)
+    f_images, f_labels = file_extractor(f_data_path, "family", gray, model)
     end_file_time_1 = time.time()
 
     # get all the family names
@@ -136,7 +136,7 @@ def data_extraction(data_set):
 
     # start the extraction of the second data set
     start_file_time_2 = time.time()
-    m_images, m_labels = file_extractor(m_data_path, "manufacturer", gray)
+    m_images, m_labels = file_extractor(m_data_path, "manufacturer", gray, model)
     print("\nmanufacturer data extracted")
     print("number of images and labels: " + str(len(m_images)))
     print("number of different manufacturer: " + str(len(set(m_labels))))
@@ -147,7 +147,7 @@ def data_extraction(data_set):
     print(f"\nTotal time taken: {end_file_time_2 - start_time:.2f} seconds")
     return f_images, f_labels, m_images, m_labels
 
-def file_extractor(data_path, data_set, gray):
+def file_extractor(data_path, data_set, gray, model=None):
     """
     Extract the data from the files
     :param data_path: path to the data
@@ -201,20 +201,8 @@ def file_extractor(data_path, data_set, gray):
                 # Adjust the size of the image
                 croped_img = cv2.resize(croped_img, (size, size), interpolation=cv2.INTER_AREA)
 
-            # check if the image was well cropped and resized
-            # if gray:
-            #     g = 1
-            # else:
-            #     g = 3
-            # if np.array(croped_img.flatten()).shape != (size * size * g,):
-            #     print(f"Error cropping image: {image_name}")
-            #     print(f"Expected shape: {(1, size * size * 3)}, but got: {np.array(croped_img.flatten()).shape}")
-            #     return None
-
-            # add the image and label to the arrays
-            #TODO: add possibility to not flatten the image for the nn
-            #   or use torchvision.io.read_image
-            m_images.append(croped_img.flatten())
+            croped_img = croped_img.flatten()
+            m_images.append(croped_img)
             m_labels.append(manufacturer)
             bar()
 
