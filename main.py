@@ -19,9 +19,7 @@ image_list = os.listdir(path + '/images')
 
 ## Importing libraries
 from command_general import *
-import joblib
 from database import *
-from data_extract import *
 
 ## Main function
 def main():

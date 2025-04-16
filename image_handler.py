@@ -1,9 +1,3 @@
-import os
-import cv2
-import matplotlib.pyplot as plt
-from path import path
-from database import *
-from data_extract import *
 from PCA_SVC import *
 
 

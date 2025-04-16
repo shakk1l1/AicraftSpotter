@@ -1,4 +1,3 @@
-# database.py
 import sqlite3
 from sqlite3 import Connection
 from queue import Queue

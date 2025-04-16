@@ -1,10 +1,4 @@
 ## imports
-import matplotlib.pyplot as plt
-import os
-from path import *
-from database import *
-from data_extract import data_extraction
-from PCA_SVC import *
 from lreg import *
 from cv import *
 from image_handler import *

@@ -2,8 +2,6 @@
 import os
 import cv2
 from alive_progress import alive_bar
-
-from progressbar import progressbar
 from PCA_SVC import load_svc_models
 from lreg import load_lreg_models
 from cv import load_cv_models
@@ -11,7 +9,6 @@ from nn import load_nn_models
 from path import *
 from database import get_image_data
 import regex as re
-import numpy as np
 import joblib
 import time
 

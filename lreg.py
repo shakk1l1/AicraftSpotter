@@ -1,4 +1,3 @@
-from scipy import sparse
 import os
 import cv2
 from sklearn.decomposition import PCA

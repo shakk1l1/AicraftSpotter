@@ -1,25 +1,19 @@
 import os
-
 import cv2
 import joblib
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torchvision
-import torchvision.transforms as transforms
 import time
 import matplotlib.pyplot as plt
 from alive_progress import alive_bar
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
-from progressbar import progressbar
 import lightning as L
 import torch.nn.functional as F # nn.functional give us access to the activation and loss functions.
 from torch.optim import Adam # optim contains many optimizers. This time we're using Adam
-
 from path import path
 import numpy as np
-
 from database import get_image_data
 
 # use GPU if available

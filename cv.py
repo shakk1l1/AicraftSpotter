@@ -1,10 +1,9 @@
-from scipy import sparse
 import os
 import cv2
 from sklearn.decomposition import PCA
 from sklearn.metrics import accuracy_score, balanced_accuracy_score
 from database import get_image_data
-from sklearn.linear_model import Lasso, LinearRegression, RidgeClassifier, RidgeClassifierCV, LassoCV
+from sklearn.linear_model import RidgeClassifierCV, LassoCV
 from path import *
 import numpy as np
 import matplotlib.pyplot as plt
