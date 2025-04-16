@@ -226,6 +226,8 @@ def nn_train_s(data, label, sel_model, size, using_set, hidden_size=None, num_la
         # Plotting the training loss and accuracy
 
         plt.figure(figsize=(12, 5))
+        #main title being hyperparameters
+        plt.suptitle(f"Hyperparameters: hidden_size={hidden_size}, num_layers={num_layers}, learning_rate={learning_rate}, num_epochs={num_epochs}", fontsize=16)
 
         # Plotting training loss
         plt.subplot(1, 2, 1)
@@ -244,6 +246,16 @@ def nn_train_s(data, label, sel_model, size, using_set, hidden_size=None, num_la
         plt.legend()
 
         plt.show()
+
+        # save the plots
+        if not os.path.exists(os.path.join(path, 'models/' + sel_model)):
+            os.makedirs(os.path.join(path, 'models/' + sel_model))
+        plt.savefig(os.path.join(path, 'models/' + sel_model, using_set + 'NN.png'))
+
+    # Visualize the model architecture
+    print("Visualizing the model architecture...")
+    print(model)
+
     # Save the model
     if not os.path.exists(os.path.join(path, 'models/' + sel_model)):
         os.makedirs(os.path.join(path, 'models/' + sel_model))

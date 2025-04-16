@@ -181,22 +181,26 @@ def lreg_train_s(data, label, model, spca, coefficient=None):
         A = D0_train
         pca = None
 
-    if input("plot eigenvalues distribution? (y/n) ").lower() == 'y':
+    if not os.path.exists(os.path.join(path, 'models/' + model)):
+        os.makedirs(os.path.join(path, 'models/' + model))
+    if pca is not None and input("plot eigenvalues distribution? (y/n) ").lower() == 'y':
         # Plot the distribution of the eigenvalues
         plt.title("Eigenvalues distribution")
         plt.xlabel("Eigenvalue index")
         plt.ylabel("Eigenvalue")
         plt.grid()
         plt.scatter(np.arange(len(pca.explained_variance_)), pca.explained_variance_)
+        plt.savefig(os.path.join(path, 'models/' + model, 'eigenvalues.png'))
         plt.show()
 
 
     if input("plot the distribution of the pca coefficients ? (y/n) ").lower() == 'y':
-        plt.title("pca coefficients distribution")
+        plt.title(f"pca coefficients distribution\nNumber of components: {pca.n_components_}")
         plt.xlabel("pca coefficient index")
         plt.ylabel("pca coefficient")
         im = plt.scatter(A[:, 0], A[:, 1], c=encoded_labels, cmap='Accent', alpha=0.6)
         plt.colorbar(im)
+        plt.savefig(os.path.join(path, 'models/' + model, 'pca_coefficients.png'))
         plt.show()
 
     # training lreg
