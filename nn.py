@@ -238,7 +238,8 @@ def nn_train_s(data, label, sel_model, size, using_set, hidden_size=None, num_la
     start_time = time.time()
 
     print(" ")
-    if input("Do you want to use a trainer for training? The trainer will use the number of epochs defined as a max number of epochs. (y/n): \n(WIP) Don't work yet").lower() == 'y':
+    WIP = None
+    if WIP is not None and input("Do you want to use a trainer for training? The trainer will use the number of epochs defined as a max number of epochs. (y/n): \n(WIP) Don't work yet").lower() == 'y':
         print("Using trainer...")
         # Create a PyTorch Lightning trainer
         trainer = L.Trainer(
@@ -419,6 +420,10 @@ def nn_test_s(data, label, used_set, used_model, D_m):
             model = FCNNClassifier_linear(input_size, hidden_size, num_layers, num_classes)
         case "improved_nn":
             model = ImprovedFCNNClassifier(input_size, hidden_size, num_layers, num_classes)
+        case "cc_nn":
+            model = CustomCNN(input_channels=3, num_filters=f_num_filter, filter_size=f_filtersize, pool_size=f_poolsize,
+                                hidden_size=hidden_size, num_classes=num_classes, num_layers=num_layers,
+                                learning_rate=f_learning_rate, input_image_size=input_size)
         #TODO: add the new model when devlopped
     model.load_state_dict(torch.load(os.path.join(path, 'models/' + used_model, used_set + 'NN.pth')))
     model.eval()  # Set the model to evaluation mode
@@ -593,7 +598,6 @@ class myCNNClassifier(L.LightningModule):
 
         self.learning_rate = learning_rate
 
-        self.layers = nn.ModuleList()  # Initialize self.layers as an nn.ModuleLis
         ############################################################################
         ##
         ## Here is where we initialize the Weights and Biases for the CNN
@@ -631,24 +635,20 @@ class myCNNClassifier(L.LightningModule):
             nn.MaxPool2d(kernel_size=poolsize, stride=2),
             nn.Dropout(dropout_prob)
         )
+        # Calculer la taille après les couches convolutives
+        conv_output_size = (input_size // poolsize) * (input_size // poolsize) * num_filters
 
         ## Lastly, we create the "normal" neural network that has
         ## 4 inputs, in_features=4, going to a single activation function, out_features=1,
         ## in a single hidden layer...
-        self.layers.append(nn.Linear(input_size, hidden_size))
-        self.layers.append(nn.BatchNorm1d(hidden_size))
-        self.layers.append(nn.LeakyReLU())
-
+        # Couches entièrement connectées
+        self.layers = nn.ModuleList()
+        self.layers.append(nn.Linear(conv_output_size, hidden_size))
         for _ in range(num_layers - 1):
             self.layers.append(nn.Linear(hidden_size, hidden_size))
             self.layers.append(nn.BatchNorm1d(hidden_size))
             self.layers.append(nn.LeakyReLU())
             self.layers.append(nn.Dropout(dropout_prob))
-
-        ## ..and the single hidden layer, in_features=1, goes to
-        ## two outputs, out_features=2
-
-        # Output layer
         self.layers.append(nn.Linear(hidden_size, num_classes))
 
         # Initialize weights
@@ -726,3 +726,63 @@ class myCNNClassifier(L.LightningModule):
                 nn.init.xavier_uniform_(layer.weight)
                 if layer.bias is not None:
                     nn.init.zeros_(layer.bias)
+
+
+class CustomCNN(nn.Module):
+    def __init__(self,
+                 input_channels=3,
+                 num_filters=32,
+                 filter_size=3,
+                 pool_size=2,
+                 hidden_size=128,
+                 num_classes=10,
+                 num_layers=2,
+                 dropout_prob=0.5,
+                 learning_rate=0.001,
+                 input_image_size=64):
+        super(CustomCNN, self).__init__()
+
+        self.learning_rate = learning_rate
+
+        # Convolutional layers
+        self.conv_layers = nn.Sequential(
+            nn.Conv2d(in_channels=input_channels, out_channels=num_filters, kernel_size=filter_size, padding=1),
+            nn.BatchNorm2d(num_filters),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=pool_size, stride=2),
+            nn.Dropout(dropout_prob)
+        )
+
+        # Calculer dynamiquement la taille de sortie après les couches convolutives
+        self.conv_output_size = self._get_conv_output_size(input_image_size, input_channels, num_filters, filter_size,
+                                                           pool_size)
+
+        # Fully connected layers
+        self.fc_layers = nn.ModuleList()
+        self.fc_layers.append(nn.Linear(self.conv_output_size, hidden_size))
+        for _ in range(num_layers - 1):
+            self.fc_layers.append(nn.Linear(hidden_size, hidden_size))
+            self.fc_layers.append(nn.BatchNorm1d(hidden_size))
+            self.fc_layers.append(nn.ReLU())
+            self.fc_layers.append(nn.Dropout(dropout_prob))
+        self.fc_layers.append(nn.Linear(hidden_size, num_classes))
+
+    def forward(self, x):
+        # Passer par les couches convolutives
+        #x = self.conv_layers(x)
+        for layer in self.conv_layers:
+            x = layer(x)
+        x = torch.flatten(x, 1)  # Aplatir sauf la dimension batch
+        # Passer par les couches entièrement connectées
+        for layer in self.fc_layers:
+            x = layer(x)
+        return x
+
+    def configure_optimizers(self):
+        return Adam(self.parameters(), lr=self.learning_rate)
+
+    def _get_conv_output_size(self, input_size, input_channels, num_filters, filter_size, pool_size):
+        # Simule un passage à travers les couches convolutives pour calculer la taille de sortie
+        dummy_input = torch.zeros(1, input_channels, input_size, input_size)
+        output = self.conv_layers(dummy_input)
+        return int(torch.flatten(output, 1).shape[1])
