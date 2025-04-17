@@ -11,10 +11,12 @@ from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
 import lightning as L
 import torch.nn.functional as F # nn.functional give us access to the activation and loss functions.
+from torch.nn.functional import dropout
 from torch.optim import Adam # optim contains many optimizers. This time we're using Adam
 from path import path
 import numpy as np
 from database import get_image_data
+from flexible_cnn import FlexibleCNN, train_flexible_cnn
 
 # use GPU if available
 print("Using GPU for Neural Networks" if torch.cuda.is_available() else "Using CPU for Neural Networks, no GPU available. \nMaybe du to a non NVIDIA GPU")
@@ -22,6 +24,8 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # Global variables
 f_input_size, f_hidden_size, f_num_layers, f_num_classes, f_learning_rate, f_num_epochs, f_filtersize, f_num_filter, f_poolsize = None, None, None, None, None, None, None, None, None
 m_input_size, m_hidden_size, m_num_layers, m_num_classes, m_learning_rate, m_num_epochs, m_filtersize, m_num_filter, m_poolsize = None, None, None, None, None, None, None, None, None
+f_batch_size, f_dropout_prob = None, None
+m_batch_size, m_dropout_prob = None, None
 le_fam = None
 le_man = None
 f_D_m, m_D_m = None, None
@@ -59,6 +63,8 @@ def load_nn_models(model):
     f_filtersize = joblib.load(os.path.join(path, 'models/' + model, 'f_filtersize.pkl'))
     f_num_filter = joblib.load(os.path.join(path, 'models/' + model, 'f_num_filter.pkl'))
     f_poolsize = joblib.load(os.path.join(path, 'models/' + model, 'f_poolsize.pkl'))
+    f_batch_size = joblib.load(os.path.join(path, 'models/' + model, 'f_batch_size.pkl'))
+    f_dropout_prob = joblib.load(os.path.join(path, 'models/' + model, 'f_dropout_prob.pkl'))
 
     m_input_size = joblib.load(os.path.join(path, 'models/' + model, 'm_input_size.pkl'))
     m_hidden_size = joblib.load(os.path.join(path, 'models/' + model, 'm_hidden_size.pkl'))
@@ -69,6 +75,8 @@ def load_nn_models(model):
     m_filtersize = joblib.load(os.path.join(path, 'models/' + model, 'm_filtersize.pkl'))
     m_num_filter = joblib.load(os.path.join(path, 'models/' + model, 'm_num_filter.pkl'))
     m_poolsize = joblib.load(os.path.join(path, 'models/' + model, 'm_poolsize.pkl'))
+    m_batch_size = joblib.load(os.path.join(path, 'models/' + model, 'm_batch_size.pkl'))
+    m_dropout_prob = joblib.load(os.path.join(path, 'models/' + model, 'm_dropout_prob.pkl'))
 
     f_D_m = joblib.load(os.path.join(path, 'models/' + model, 'f_D_m.pkl'))
     m_D_m = joblib.load(os.path.join(path, 'models/' + model, 'm_D_m.pkl'))
@@ -123,6 +131,7 @@ def hyperparameters_selector(models):
             learning_rate = float(input("=> "))
             print("7. number of epochs (integer)")
             num_epochs = int(input("=> "))
+
         case _:
             print("\nunknown model")
             print("selecting base hyperparameters")
@@ -133,22 +142,58 @@ def hyperparameters_selector(models):
             filtersize = None
             num_filters = None
             poolsize = None
+
+    # For models other than flexible_cnn, return without dropout_prob and batch_size
     return hidden_size, num_layers, learning_rate, num_epochs, filtersize, num_filters, poolsize
 
+def hyperparameters_selector_2(models):
+    print("\nselect the hyperparameters for your FlexibleCNN model:")
+    print("1. base filters (integer, recommended: 32-128)")
+    num_filters = int(input("=> "))
+    print("2. learning rate (float, recommended: 0.001-0.01)")
+    learning_rate = float(input("=> "))
+    print("3. number of epochs (integer, recommended: 50-200)")
+    num_epochs = int(input("=> "))
+    print("4. dropout probability (float, recommended: 0.2-0.5)")
+    dropout_prob = float(input("=> "))
+    print("5. batch size (integer, recommended: 16-128)")
+    batch_size = int(input("=> "))
+    # Set other parameters to None or default values
+    hidden_size = num_filters  # Use num_filters as hidden_size for compatibility
+    num_layers = 2  # Default value
+    filtersize = 3  # Default value
+    poolsize = 2  # Default value
+    return hidden_size, num_layers, learning_rate, num_epochs, filtersize, num_filters, poolsize, dropout_prob, batch_size
+
 def nn_train(data_family, label_family, data_manufacturer, label_manufacturer, model):
-    global f_input_size, f_hidden_size, f_num_layers, f_num_classes, le_fam, f_learning_rate, f_num_epochs, f_filtersize, f_num_filter, f_poolsize
-    global m_input_size, m_hidden_size, m_num_layers, m_num_classes, le_man, m_learning_rate, m_num_epochs, m_filtersize, m_num_filter, m_poolsize
+    global f_input_size, f_hidden_size, f_num_layers, f_num_classes, le_fam, f_learning_rate, f_num_epochs, f_filtersize, f_num_filter, f_poolsize, f_batch_size, f_dropout_prob
+    global m_input_size, m_hidden_size, m_num_layers, m_num_classes, le_man, m_learning_rate, m_num_epochs, m_filtersize, m_num_filter, m_poolsize, m_batch_size, m_dropout_prob
     global f_D_m, m_D_m
     from data_extract import size
     if input("\nDo you wish to use the same hyperparameters for both models? (y/n) ").lower() == 'y':
         # Select hyperparameters for both models
-        hidden_size, num_layers, learning_rate, num_epochs, filtersize, num_filters, poolsize = hyperparameters_selector(model)
+        if model == "flexible_cnn":
+            (hidden_size, num_layers, learning_rate, num_epochs, filtersize, num_filters, poolsize,
+             dropout_prob, batch_size) = hyperparameters_selector_2(model)
+        else:
+            (hidden_size, num_layers, learning_rate, num_epochs, filtersize, num_filters,
+             poolsize) = hyperparameters_selector(model)
+            dropout_prob = None
+            batch_size = None
     else:
-        hidden_size, num_layers, learning_rate, num_epochs, filtersize, num_filters, poolsize = None, None, None, None, None, None, None
+        (hidden_size, num_layers, learning_rate, num_epochs, filtersize,
+         num_filters, poolsize, dropout_prob, batch_size) = None, None, None, None, None, None, None, None, None
     print("\nTraining family model...")
-    f_input_size, f_hidden_size, f_num_layers, f_num_classes, le_fam, f_learning_rate, f_num_epochs, f_D_m, f_filtersize, f_num_filter, f_poolsize = nn_train_s(data_family, label_family, model, size, "f_", hidden_size, num_layers, learning_rate, num_epochs, filtersize, num_filters, poolsize)
+    (f_input_size, f_hidden_size, f_num_layers, f_num_classes, le_fam, f_learning_rate, f_num_epochs, f_D_m,
+     f_filtersize, f_num_filter, f_poolsize) \
+        = nn_train_s(data_family, label_family, model, size, "f_",
+                     hidden_size, num_layers, learning_rate, num_epochs, filtersize, num_filters, poolsize,
+                     dropout_prob=dropout_prob, batch_size=batch_size)
     print("\nTraining manufacturer model...")
-    m_input_size, m_hidden_size, m_num_layers, m_num_classes, le_man, m_learning_rate, m_num_epochs, m_D_m, m_filtersize, m_num_filter, m_poolsize = nn_train_s(data_manufacturer, label_manufacturer, model, size, "m_", hidden_size, num_layers, learning_rate, num_epochs, filtersize, num_filters, poolsize)
+    (m_input_size, m_hidden_size, m_num_layers, m_num_classes, le_man, m_learning_rate, m_num_epochs, m_D_m,
+     m_filtersize, m_num_filter, m_poolsize)\
+        = nn_train_s(data_manufacturer, label_manufacturer, model, size, "m_"
+                     , hidden_size, num_layers, learning_rate, num_epochs, filtersize, num_filters, poolsize)
 
     # Save the models
     joblib.dump(le_fam, os.path.join(path, 'models/' + model, 'le_fam.pkl'))
@@ -163,6 +208,8 @@ def nn_train(data_family, label_family, data_manufacturer, label_manufacturer, m
     joblib.dump(f_filtersize, os.path.join(path, 'models/' + model, 'f_filtersize.pkl'))
     joblib.dump(f_num_filter, os.path.join(path, 'models/' + model, 'f_num_filter.pkl'))
     joblib.dump(f_poolsize, os.path.join(path, 'models/' + model, 'f_poolsize.pkl'))
+    joblib.dump(f_batch_size, os.path.join(path, 'models/' + model, 'f_batch_size.pkl'))
+    joblib.dump(f_dropout_prob, os.path.join(path, 'models/' + model, 'f_dropout_prob.pkl'))
 
     joblib.dump(m_input_size, os.path.join(path, 'models/' + model, 'm_input_size.pkl'))
     joblib.dump(m_hidden_size, os.path.join(path, 'models/' + model, 'm_hidden_size.pkl'))
@@ -173,6 +220,8 @@ def nn_train(data_family, label_family, data_manufacturer, label_manufacturer, m
     joblib.dump(m_filtersize, os.path.join(path, 'models/' + model, 'm_filtersize.pkl'))
     joblib.dump(m_num_filter, os.path.join(path, 'models/' + model, 'm_num_filter.pkl'))
     joblib.dump(m_poolsize, os.path.join(path, 'models/' + model, 'm_poolsize.pkl'))
+    joblib.dump(m_batch_size, os.path.join(path, 'models/' + model, 'm_batch_size.pkl'))
+    joblib.dump(m_dropout_prob, os.path.join(path, 'models/' + model, 'm_dropout_prob.pkl'))
 
     # Save the mean values
     joblib.dump(f_D_m, os.path.join(path, 'models/' + model, 'f_D_m.pkl'))
@@ -183,7 +232,8 @@ def nn_train(data_family, label_family, data_manufacturer, label_manufacturer, m
     joblib.dump(size, os.path.join(path, 'models/' + model, 'size.pkl'))
     joblib.dump(gray, os.path.join(path, 'models/' + model, 'gray.pkl'))
 
-def nn_train_s(data, label, sel_model, size, using_set, hidden_size=None, num_layers=None, learning_rate=None, num_epochs=None, filtersize=None, num_filters=None, poolsize=None):
+def nn_train_s(data, label, sel_model, size, using_set, hidden_size=None, num_layers=None, learning_rate=None, num_epochs=None,
+               filtersize=None, num_filters=None, poolsize=None, dropout_prob=None, batch_size=None):
 
     # Convert entire datasets to tensors
     from data_extract import gray
@@ -207,10 +257,17 @@ def nn_train_s(data, label, sel_model, size, using_set, hidden_size=None, num_la
     input_size = size * size
     num_classes = len(le.classes_)  # Number of unique labels
 
+    # Default values for flexible_cnn specific parameters
+    dropout_prob = 0.5
+    batch_size = 32
+
     if hidden_size is None or num_layers is None or learning_rate is None or num_epochs is None:
         # Select hyperparameters
-        if sel_model != "cl_nn":
-            hidden_size, num_layers, learning_rate, num_epochs = hyperparameters_selector(sel_model)
+        if sel_model == "flexible_cnn":
+            (hidden_size, num_layers, learning_rate, num_epochs, filtersize, num_filters, poolsize,
+             dropout_prob, batch_size) = hyperparameters_selector_2(model)
+        elif sel_model == "cl_nn":
+            hidden_size, num_layers, learning_rate, num_epochs, filtersize, num_filters, poolsize = hyperparameters_selector(sel_model)
         else:
             hidden_size, num_layers, learning_rate, num_epochs, filtersize, num_filters, poolsize = hyperparameters_selector(sel_model)
 
@@ -220,90 +277,150 @@ def nn_train_s(data, label, sel_model, size, using_set, hidden_size=None, num_la
         g = 3
 
     # Create the model, loss function, and optimizer
-    match sel_model:
-        case "cl_nn":
-            model = FCNNClassifier_linear(input_size, hidden_size, num_layers, num_classes)
-        case "improved_nn":
-            model = ImprovedFCNNClassifier(input_size, hidden_size, num_layers, num_classes)
-        case "cc_nn":
-            model = myCNNClassifier(g=g, filtersize=filtersize, poolsize=poolsize, input_size=input_size, hidden_size=hidden_size, num_classes=num_classes, num_layers=num_layers, dropout_prob=0.5, learning_rate=learning_rate, num_filters=num_filters)
-            train_images = train_images.view(-1, g, size, size)  # Reshape to (batch_size, channels, height, width)
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-
-    # Training loop - using the entire dataset at once instead of batches
     train_loss_list = []
     train_accs_list = []
-
     start_time = time.time()
 
-    print(" ")
-    WIP = None
-    if WIP is not None and input("Do you want to use a trainer for training? The trainer will use the number of epochs defined as a max number of epochs. (y/n): \n(WIP) Don't work yet").lower() == 'y':
-        print("Using trainer...")
-        # Create a PyTorch Lightning trainer
-        trainer = L.Trainer(
-            max_epochs=10,
-            accelerator="gpu" if torch.cuda.is_available() else "cpu",
+    # Initialize the plot for real-time visualization
+    plt.ion()  # Turn on interactive mode
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+    fig.suptitle(f"Hyperparameters: hidden_size={hidden_size}, num_layers={num_layers}, learning_rate={learning_rate}, num_epochs={num_epochs}", fontsize=16)
+
+    # Setup loss plot
+    ax1.set_xlabel('Epochs')
+    ax1.set_ylabel('Loss')
+    ax1.set_title('Training Loss')
+    loss_line, = ax1.plot([], [], 'b-', label='Train Loss')
+    ax1.legend()
+
+    # Setup accuracy plot
+    ax2.set_xlabel('Epochs')
+    ax2.set_ylabel('Accuracy (%)')
+    ax2.set_title('Training Accuracy')
+    acc_line, = ax2.plot([], [], 'orange', label='Train Accuracy')
+    ax2.legend()
+
+    # To avoid the plot from being garbage collected
+    plt.show(block=False)
+
+    if sel_model == "flexible_cnn":
+        # Reshape data for FlexibleCNN
+        train_images = train_images.view(-1, g, size, size)  # Reshape to (batch_size, channels, height, width)
+
+        # Convert to float32 to match model weight type
+        train_images = train_images.float()
+        train_labels = train_labels.long()  # Ensure labels are long type
+
+        # Use the specialized training function for FlexibleCNN
+        print("Training the FlexibleCNN model...")
+        model = train_flexible_cnn(
+            data=train_images,
+            labels=train_labels,
+            input_channels=g,
+            input_size=size,
+            num_classes=num_classes,
+            batch_size=batch_size,
+            learning_rate=learning_rate,
+            num_epochs=num_epochs,
+            using_set=using_set
         )
-        # Train the model
-        trainer.fit(model, train_images.float(), train_labels)
+
+        # Since we're using a different training method, we don't have the same metrics
+        # We'll create dummy metrics for compatibility with visualization code
+        train_loss_list = [0] * num_epochs
+        train_accs_list = [0] * num_epochs
+
+        # Get the actual metrics from the model's training history if available
+        if hasattr(model, 'trainer') and hasattr(model.trainer, 'callback_metrics'):
+            metrics = model.trainer.callback_metrics
+            if 'train_loss' in metrics:
+                train_loss_list[-1] = metrics['train_loss'].item()
+            if 'train_acc' in metrics:
+                train_accs_list[-1] = metrics['train_acc'].item() * 100  # Convert to percentage
     else:
-        print("Training the model...")
-        with alive_bar(num_epochs, force_tty=True, max_cols=270) as bar:
-            for epoch in range(num_epochs):
-                outputs = model(train_images.float())
-                loss = criterion(outputs, train_labels)
+        # Create the model based on selection
+        match sel_model:
+            case "cl_nn":
+                model = FCNNClassifier_linear(input_size, hidden_size, num_layers, num_classes)
+            case "improved_nn":
+                model = ImprovedFCNNClassifier(input_size, hidden_size, num_layers, num_classes)
+            case "cc_nn":
+                model = myCNNClassifier(g=g, filtersize=filtersize, poolsize=poolsize, input_size=input_size, hidden_size=hidden_size, num_classes=num_classes, num_layers=num_layers, dropout_prob=0.5, learning_rate=learning_rate, num_filters=num_filters)
+                train_images = train_images.view(-1, g, size, size)  # Reshape to (batch_size, channels, height, width)
 
-                # Backward pass and optimization
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+        criterion = nn.CrossEntropyLoss()
+        optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-                # Calculate training accuracy
-                _, predicted = torch.max(outputs.data, 1)
-                train_accuracy = 100 * (predicted == train_labels).sum().item() / len(train_labels)
+        print(" ")
+        WIP = None
+        if WIP is not None and input("Do you want to use a trainer for training? The trainer will use the number of epochs defined as a max number of epochs. (y/n): \n(WIP) Don't work yet").lower() == 'y':
+            print("Using trainer...")
+            # Create a PyTorch Lightning trainer
+            trainer = L.Trainer(
+                max_epochs=10,
+                accelerator="gpu" if torch.cuda.is_available() else "cpu",
+            )
+            # Train the model
+            trainer.fit(model, train_images.float(), train_labels)
+        else:
+            print("Training the model...")
+            with alive_bar(num_epochs, force_tty=True, max_cols=270) as bar:
+                for epoch in range(num_epochs):
+                    outputs = model(train_images.float())
+                    loss = criterion(outputs, train_labels)
 
-                # Save training metrics
-                train_loss_list.append(loss.item())
-                train_accs_list.append(train_accuracy)
-                if (epoch + 1) % 10 == 0:
-                    print(f'Epoch [{epoch + 1}/{num_epochs}], '
-                          f'Train Loss: {loss.item():.4f}, Train Accuracy: {train_accuracy:.2f}%')
-                bar()
+                    # Backward pass and optimization
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
+
+                    # Calculate training accuracy
+                    _, predicted = torch.max(outputs.data, 1)
+                    train_accuracy = 100 * (predicted == train_labels).sum().item() / len(train_labels)
+
+                    # Save training metrics
+                    train_loss_list.append(loss.item())
+                    train_accs_list.append(train_accuracy)
+
+                    # Update the plots
+                    loss_line.set_data(range(len(train_loss_list)), train_loss_list)
+                    acc_line.set_data(range(len(train_accs_list)), train_accs_list)
+
+                    # Adjust the plot limits if needed
+                    ax1.relim()
+                    ax1.autoscale_view()
+                    ax2.relim()
+                    ax2.autoscale_view()
+
+                    # Redraw the figure
+                    fig.canvas.draw_idle()
+                    fig.canvas.flush_events()
+
+                    if (epoch + 1) % 10 == 0:
+                        print(f'Epoch [{epoch + 1}/{num_epochs}], '
+                              f'Train Loss: {loss.item():.4f}, Train Accuracy: {train_accuracy:.2f}%')
+                    bar()
 
     end_time = time.time()
     print(f'Training completed in {end_time - start_time:.2f} seconds\n')
 
-    if input("Do you want to visualize the training loss and accuracy? (y/n): ").lower() == 'y':
-        # Plotting the training loss and accuracy
+    # Final update of the plots
+    loss_line.set_data(range(len(train_loss_list)), train_loss_list)
+    acc_line.set_data(range(len(train_accs_list)), train_accs_list)
+    ax1.relim()
+    ax1.autoscale_view()
+    ax2.relim()
+    ax2.autoscale_view()
+    fig.canvas.draw()
 
-        plt.figure(figsize=(12, 5))
-        #main title being hyperparameters
-        plt.suptitle(f"Hyperparameters: hidden_size={hidden_size}, num_layers={num_layers}, learning_rate={learning_rate}, num_epochs={num_epochs}", fontsize=16)
+    # Save the plots
+    if not os.path.exists(os.path.join(path, 'models/' + sel_model)):
+        os.makedirs(os.path.join(path, 'models/' + sel_model))
+    plt.savefig(os.path.join(path, 'models/' + sel_model, using_set + 'NN.png'))
 
-        # Plotting training loss
-        plt.subplot(1, 2, 1)
-        plt.plot(train_loss_list, label='Train Loss')
-        plt.xlabel('Epochs')
-        plt.ylabel('Loss')
-        plt.title('Training Loss')
-        plt.legend()
-
-        # Plotting training accuracy
-        plt.subplot(1, 2, 2)
-        plt.plot(train_accs_list, label='Train Accuracy', color='orange')
-        plt.xlabel('Epochs')
-        plt.ylabel('Accuracy (%)')
-        plt.title('Training Accuracy')
-        plt.legend()
-
-        plt.show()
-
-        # save the plots
-        if not os.path.exists(os.path.join(path, 'models/' + sel_model)):
-            os.makedirs(os.path.join(path, 'models/' + sel_model))
-        plt.savefig(os.path.join(path, 'models/' + sel_model, using_set + 'NN.png'))
+    # Turn off interactive mode
+    plt.ioff()
+    plt.show()
 
     # Visualize the model architecture
     print("Visualizing the model architecture...")
@@ -328,8 +445,10 @@ def nn_predict(image_name, model):
     # extract the image
     if gray:
         img = cv2.imread(os.path.join(path + '/images', image_name + '.jpg'), cv2.IMREAD_GRAYSCALE)
+        g = 1
     else:
         img = cv2.imread(os.path.join(path + '/images', image_name + '.jpg'))
+        g = 3
     if img is None:
         print(f"Error loading image: {image_name}")
         return None
@@ -340,36 +459,92 @@ def nn_predict(image_name, model):
     # crop and resize the image
     croped_img = img[y1 + 1:y2 + 1, x1 + 1:x2 + 1]
     croped_img = cv2.resize(croped_img, (size, size), interpolation=cv2.INTER_AREA)
-    d_img = croped_img.flatten()
-    d_img_array = []
-    d_img_array.append(d_img)
+
+    # Prepare data for prediction
+    if model == "flexible_cnn":
+        # For FlexibleCNN, we need the image in (channels, height, width) format
+        if g == 1:
+            # For grayscale, add channel dimension
+            d_img_array = np.expand_dims(croped_img, axis=0)  # Add batch dimension
+            d_img_array = np.expand_dims(d_img_array, axis=0)  # Add channel dimension
+        else:
+            # For color, transpose to (batch, channels, height, width)
+            d_img_array = np.expand_dims(croped_img, axis=0)  # Add batch dimension
+            d_img_array = np.transpose(d_img_array, (0, 3, 1, 2))  # Reorder to (batch, channels, height, width)
+    else:
+        # For other models, flatten the image
+        d_img = croped_img.flatten()
+        d_img_array = []
+        d_img_array.append(d_img)
+        d_img_array = np.array(d_img_array)
+
     end_extract = time.time()
 
-    # load the models
-    NN_fam = FCNNClassifier_linear(f_input_size, f_hidden_size, f_num_layers, f_num_classes)
+    # Normalize data
+    print("normalizing data...")
+    d_img_array = np.array(d_img_array) / 255.0
+
+    # Load family model
+    if model == "flexible_cnn":
+        NN_fam = FlexibleCNN(
+            input_channels=g,
+            input_size=size,
+            num_classes=f_num_classes,
+            learning_rate=f_learning_rate
+        )
+        # Centering data
+        print("centering data...")
+        if g == 1:
+            # For grayscale
+            d_img_c_f = d_img_array - f_D_m.reshape(1, size, size)
+        else:
+            # For color, reshape D_m to match image dimensions
+            d_img_c_f = d_img_array.copy()
+            for c in range(g):
+                d_img_c_f[:, c, :, :] -= f_D_m.reshape(size, size, g)[:, :, c].reshape(1, size, size)
+    else:
+        NN_fam = FCNNClassifier_linear(f_input_size, f_hidden_size, f_num_layers, f_num_classes)
+        # Centering data
+        print("centering data...")
+        d_img_c_f = d_img_array - f_D_m
+
     NN_fam.load_state_dict(torch.load(os.path.join(path, 'models/' + model, 'f_NN.pth')))
     NN_fam.eval()  # Set the model to evaluation mode
 
-    print("normalizing data...")
-    d_img_array = np.array(d_img_array) / 255.0
-    # centering
-    print("centering data...")
-    d_img_c_f = d_img_array - f_D_m
+    # Load manufacturer model
+    if model == "flexible_cnn":
+        NN_man = FlexibleCNN(
+            input_channels=g,
+            input_size=size,
+            num_classes=m_num_classes,
+            learning_rate=m_learning_rate
+        )
+        # Centering data
+        print("centering data...")
+        if g == 1:
+            # For grayscale
+            d_img_c_m = d_img_array - m_D_m.reshape(1, size, size)
+        else:
+            # For color, reshape D_m to match image dimensions
+            d_img_c_m = d_img_array.copy()
+            for c in range(g):
+                d_img_c_m[:, c, :, :] -= m_D_m.reshape(size, size, g)[:, :, c].reshape(1, size, size)
+    else:
+        NN_man = FCNNClassifier_linear(m_input_size, m_hidden_size, m_num_layers, m_num_classes)
+        # Centering data
+        print("centering data...")
+        d_img_c_m = d_img_array - m_D_m.reshape(1, size, size)
 
-    NN_man = FCNNClassifier_linear(m_input_size, m_hidden_size, m_num_layers, m_num_classes)
     NN_man.load_state_dict(torch.load(os.path.join(path, 'models/' + model, 'm_NN.pth')))
     NN_man.eval()  # Set the model to evaluation mode
-
-    print("centering data...")
-    d_img_c_m = d_img_array - m_D_m
 
     start_prediction = time.time()
     # Get predictions
     with torch.no_grad():
-        outputs_f = NN_fam(d_img_c_f.float())
+        outputs_f = NN_fam(torch.from_numpy(d_img_c_f).float())
         _, predicted_f = torch.max(outputs_f, 1)
 
-        outputs_m = NN_man(d_img_c_m.float())
+        outputs_m = NN_man(torch.from_numpy(d_img_c_m).float())
         _, predicted_m = torch.max(outputs_m, 1)
 
     end_prediction = time.time()
@@ -407,26 +582,28 @@ def nn_test_s(data, label, used_set, used_model, D_m):
         num_layers = f_num_layers
         num_classes = f_num_classes
         le = le_fam
+        learning_rate = f_learning_rate
+        filtersize = f_filtersize
+        num_filters = f_num_filter
+        poolsize = f_poolsize
     else:
         input_size = m_input_size
         hidden_size = m_hidden_size
         num_layers = m_num_layers
         num_classes = m_num_classes
         le = le_man
+        learning_rate = m_learning_rate
+        filtersize = m_filtersize
+        num_filters = m_num_filter
+        poolsize = m_poolsize
+
+    from data_extract import size, gray
+    if gray:
+        g = 1
+    else:
+        g = 3
 
     label = le.transform(label)
-    match used_model:
-        case "cl_nn":
-            model = FCNNClassifier_linear(input_size, hidden_size, num_layers, num_classes)
-        case "improved_nn":
-            model = ImprovedFCNNClassifier(input_size, hidden_size, num_layers, num_classes)
-        case "cc_nn":
-            model = CustomCNN(input_channels=3, num_filters=f_num_filter, filter_size=f_filtersize, pool_size=f_poolsize,
-                                hidden_size=hidden_size, num_classes=num_classes, num_layers=num_layers,
-                                learning_rate=f_learning_rate, input_image_size=input_size)
-        #TODO: add the new model when devlopped
-    model.load_state_dict(torch.load(os.path.join(path, 'models/' + used_model, used_set + 'NN.pth')))
-    model.eval()  # Set the model to evaluation mode
 
     # convert data to numpy array
     data = np.array(data)
@@ -438,15 +615,46 @@ def nn_test_s(data, label, used_set, used_model, D_m):
     label = np.array(label)
 
     # Convert entire datasets to tensors
-    test_images_flat = torch.from_numpy(data)
+    test_images = torch.from_numpy(data)
     test_labels = torch.from_numpy(label)
-    
+
+    # Create and load the appropriate model
+    match used_model:
+        case "cl_nn":
+            model = FCNNClassifier_linear(input_size, hidden_size, num_layers, num_classes)
+            model.load_state_dict(torch.load(os.path.join(path, 'models/' + used_model, used_set + 'NN.pth')))
+        case "improved_nn":
+            model = ImprovedFCNNClassifier(input_size, hidden_size, num_layers, num_classes)
+            model.load_state_dict(torch.load(os.path.join(path, 'models/' + used_model, used_set + 'NN.pth')))
+        case "cc_nn":
+            model = CustomCNN(input_channels=g, num_filters=num_filters, filter_size=filtersize, pool_size=poolsize,
+                              hidden_size=hidden_size, num_classes=num_classes, num_layers=num_layers,
+                              learning_rate=learning_rate, input_image_size=size)
+            model.load_state_dict(torch.load(os.path.join(path, 'models/' + used_model, used_set + 'NN.pth')))
+            # Reshape for CNN
+            test_images = test_images.view(-1, g, size, size)
+        case "flexible_cnn":
+            model = FlexibleCNN(
+                input_channels=g,
+                input_size=size,
+                num_classes=num_classes,
+                learning_rate=learning_rate,
+            )
+            model.load_state_dict(torch.load(os.path.join(path, 'models/' + used_model, used_set + 'NN.pth')))
+            # Reshape for CNN
+            test_images = test_images.view(-1, g, size, size)
+            # Convert to float32 to match model weight type
+            test_images = test_images.float()
+            test_labels = test_labels.long()  # Ensure labels are long type
+
+    model.eval()  # Set the model to evaluation mode
+
     # Predict using the model
     print("Predicting test data...")
     pred_s_time = time.time()
-    test_outputs = model(test_images_flat.float())
+    test_outputs = model(test_images.float())
     pred_e_time = time.time()
-    
+
     # Calculate test accuracy
     print("\nCalculating test accuracy...")
     accuracy_s_time = time.time()
@@ -474,14 +682,14 @@ def nn_test_s(data, label, used_set, used_model, D_m):
 
     accuracy_e_time = time.time()
     print(f'Test Accuracy: {test_accuracy:.2f}%')
-    
+
     # Print time taken for prediction and accuracy calculation
     print(f'\nTime taken for prediction: {pred_e_time - pred_s_time:.2f} seconds')
     print(f'Time taken for accuracy calculation: {accuracy_e_time - accuracy_s_time:.2f} seconds')
     # Print total time taken
     print(f'Total time taken: {accuracy_e_time - accuracy_e_time:.2f} seconds')
-    
-    
+
+
 def nn_param():
     from data_extract import size, gray
     print(" ")
