@@ -98,7 +98,7 @@ def data_extraction(data_set, model=None):
     # else ask the user
     print(" ")
     if size is None:
-        size = int(input("define size of the image (x, x): "))
+        size = int(input("define size of the image (x, x)\nCAREFUL please do NOT choose 256 and above. Your PC will be unresponsive and you will need to force reboot\nFun fact: It will try to use 14Gb of cache CPU memory\nSo if you want to keep your PC alive choose 128 : "))
     else:
         print("size already defined (" + str(size) + ')')
         if input("is it correct? (y/n) ").lower() == 'n':
