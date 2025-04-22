@@ -540,14 +540,18 @@ def nn_predict(image_name, model):
 
     start_prediction = time.time()
     # Get predictions
-    with torch.no_grad():
-        outputs_f = NN_fam(torch.from_numpy(d_img_c_f).float())
-        _, predicted_f = torch.max(outputs_f, 1)
+    if model == "flexible_cnn":
+        predicted_m, confidence_percentages_m = NN_man.predict(torch.from_numpy(d_img_c_m).float())
+        predicted_f, confidence_percentages_f = NN_fam.predict(torch.from_numpy(d_img_c_f).float())
+    else:
+        with torch.no_grad():
+            outputs_f = NN_fam(torch.from_numpy(d_img_c_f).float())
+            _,predicted_f = torch.max(outputs_f, 1)
 
-        outputs_m = NN_man(torch.from_numpy(d_img_c_m).float())
-        _, predicted_m = torch.max(outputs_m, 1)
-
+            outputs_m = NN_man(torch.from_numpy(d_img_c_m).float())
+            _, predicted_m = torch.max(outputs_m, 1)
     end_prediction = time.time()
+
     # Convert predicted labels back to original labels
     predicted_f = le_fam.inverse_transform(predicted_f.numpy())
     predicted_m = le_man.inverse_transform(predicted_m.numpy())
@@ -555,7 +559,10 @@ def nn_predict(image_name, model):
     # Display images and their predictions
     plt.figure(figsize=(15, 5))
     plt.imshow(croped_img, cmap='gray' if gray else None)
-    plt.title(f'Predicted family: {predicted_f.item()}, Predicted manufacturer: {predicted_m.item()}')
+    if model == "flexible_cnn":
+        plt.title(f'Predicted family: {predicted_f[0]} with a confidence of {round(confidence_percentages_f[0], 2)}\n Predicted manufacturer: {predicted_m[0]}  with a confidence of {round(confidence_percentages_m[0], 2)}')
+    else:
+        plt.title(f'Predicted family: {predicted_f.item()}, Predicted manufacturer: {predicted_m.item()}')
     plt.axis('off')
     plt.tight_layout()
     plt.show()

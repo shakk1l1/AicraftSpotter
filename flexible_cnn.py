@@ -275,6 +275,36 @@ class FlexibleCNN(L.LightningModule):
                 nn.init.normal_(m.weight, 0, 0.01)
                 nn.init.constant_(m.bias, 0)
 
+    def predict(self, x):
+        """
+        Make a prediction with confidence percentage.
+
+        Args:
+            x: Input tensor of shape (batch_size, channels, height, width)
+
+        Returns:
+            tuple: (predicted_class, confidence_percentage)
+                - predicted_class: The predicted class index
+                - confidence_percentage: The confidence percentage for the prediction (0-100)
+        """
+        # Ensure the model is in evaluation mode
+        self.eval()
+
+        # Forward pass
+        with torch.no_grad():
+            outputs = self(x)
+
+            # Apply softmax to get probabilities
+            probabilities = F.softmax(outputs, dim=1)
+
+            # Get the predicted class and its probability
+            confidence, predicted_class = torch.max(probabilities, dim=1)
+
+            # Convert to percentage (0-100)
+            confidence_percentage = confidence * 100
+
+        return predicted_class, confidence_percentage
+
 
 def train_flexible_cnn(data, labels, input_channels=3, input_size=64, num_classes=None,
                        batch_size=32, learning_rate=0.001, num_epochs=50, validation_split=0.2, using_set=None):
