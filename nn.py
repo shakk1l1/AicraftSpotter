@@ -17,8 +17,20 @@ import numpy as np
 from database import get_image_data
 
 # use GPU if available
-print("Using GPU for Neural Networks" if torch.cuda.is_available() else "Using CPU for Neural Networks, no GPU available. \nMaybe du to a non NVIDIA GPU")
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print("Using GPU for Neural Networks" if torch.cuda.is_available() or torch.backends.mps.is_available() else "Using CPU for Neural Networks, no GPU available. \nMaybe du to a non NVIDIA GPU")
+
+# ---------------------------------------------------
+# GPU or CPU usage
+# ---------------------------------------------------
+if torch.cuda.is_available():
+    device = torch.device("cuda")
+    print("Using GPU")
+elif torch.backends.mps.is_available():
+    device = torch.device("mps")
+    print("Using Apple Silicon GPU")
+else:
+    device = torch.device("cpu")
+    print("Using CPU")
 # Global variables
 f_input_size, f_hidden_size, f_num_layers, f_num_classes, f_learning_rate, f_num_epochs, f_filtersize, f_num_filter, f_poolsize = None, None, None, None, None, None, None, None, None
 m_input_size, m_hidden_size, m_num_layers, m_num_classes, m_learning_rate, m_num_epochs, m_filtersize, m_num_filter, m_poolsize = None, None, None, None, None, None, None, None, None
