@@ -6,7 +6,7 @@ from image_handler import *
 from nn import *
 from main import image_list
 
-model_list = ['svc', 'lsvc', 'psvc', 'lreg-lasso', 'lreg-lsr', 'lreg-ridge', 'cv-ridge', 'cv-lasso', 'cl_nn', 'improved_nn', 'cc_nn']      # list of models available
+model_list = ['svc', 'lsvc', 'psvc', 'lreg-lasso', 'lreg-lsr', 'lreg-ridge', 'cv-ridge', 'cv-lasso', 'cl_nn', 'improved_nn', 'cc_nn', 'flexible_cnn']      # list of models available
 
 def commandpath():
     """
@@ -70,6 +70,7 @@ def command_model(actual_model=None, actual_train_status=None):
     print("     > Conventional Linear Neural Network => cl_nn")
     print("     > Improved Conventional Linear Neural Network => improved_nn")
     print("     > Custom Conventional Neural Network => cc_nn (WIP)")
+    print("     > Flexible CNN with Residual Connections => flexible_cnn")
     print("WIP = Work In Progress")
     print("x = not working well as it use continuous data prediction, i.e. it is not a classification model\n")
     model = input("     => ")       # get the new wanted model from user
@@ -261,6 +262,10 @@ def command(model, train_status):
                         train_status = "trained"
                     case "cc_nn":
                         print("training with custom neural network")
+                        nn_train(f_train_data, f_train_label, m_train_data, m_train_label, model)
+                        train_status = "trained"
+                    case "flexible_cnn":
+                        print("training with flexible cnn")
                         nn_train(f_train_data, f_train_label, m_train_data, m_train_label, model)
                         train_status = "trained"
                     case _:

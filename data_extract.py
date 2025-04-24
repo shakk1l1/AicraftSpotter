@@ -98,7 +98,7 @@ def data_extraction(data_set, model=None):
     # else ask the user
     print(" ")
     if size is None:
-        size = int(input("define size of the image (x, x): "))
+        size = int(input("define size of the image (x, x)\nCAREFUL please do NOT choose 256 and above. Your PC will be unresponsive and you will need to force reboot\nFun fact: It will try to use 14Gb of cache CPU memory\nSo if you want to keep your PC alive choose 128 : "))
     else:
         print("size already defined (" + str(size) + ')')
         if input("is it correct? (y/n) ").lower() == 'n':
@@ -122,6 +122,16 @@ def data_extraction(data_set, model=None):
             else:
                 gray = False
 
+    # Check if the data is already been extracted
+    if os.path.exists(os.path.join(path, 'f_data_extracted_'+ data_set +'('+ str(size) + str(gray)+').pkl')):
+        print("Data already extracted")
+        f_images, f_labels = joblib.load(os.path.join(path, 'f_data_extracted_'+ data_set +'('+ str(size) + str(gray)+').pkl'))
+        m_images, m_labels = joblib.load(os.path.join(path, 'm_data_extracted_'+ data_set +'('+ str(size) + str(gray)+').pkl'))
+        print("Data loaded")
+        return f_images, f_labels, m_images, m_labels
+    else:
+        print("Data not yet extracted")
+        print("Extracting data...")
     # start the extraction of the first data set
     start_file_time_1 = time.time()
     f_images, f_labels = file_extractor(f_data_path, "family", gray, model)
@@ -145,6 +155,12 @@ def data_extraction(data_set, model=None):
 
     # print the time taken to extract the data
     print(f"\nTotal time taken: {end_file_time_2 - start_time:.2f} seconds")
+
+    # save the data to a file
+    print("\nSaving data for next time...")
+    joblib.dump((f_images, f_labels), os.path.join(path, 'f_data_extracted_'+ data_set +'('+ str(size) + str(gray)+').pkl'))
+    joblib.dump((m_images, m_labels), os.path.join(path, 'm_data_extracted_'+ data_set +'('+ str(size) + str(gray)+').pkl'))
+    print("Data saved")
     return f_images, f_labels, m_images, m_labels
 
 def file_extractor(data_path, data_set, gray, model=None):
