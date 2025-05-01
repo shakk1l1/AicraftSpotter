@@ -11,3 +11,4 @@ torchvision
 alive-progress
 progressbar2
 lightning
+neat-python

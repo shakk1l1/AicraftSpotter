@@ -6,6 +6,8 @@ from PCA_SVC import load_svc_models
 from lreg import load_lreg_models
 from cv import load_cv_models
 from nn import load_nn_models
+from random_forest import load_rf_models
+from nn_neat import load_neat_models
 from path import *
 from database import get_image_data
 import regex as re
@@ -40,6 +42,10 @@ def load_models(model):
         temporary_model = "cv"
     elif "nn" in model:
         temporary_model = "nn"
+    elif "rf" in model:
+        temporary_model = "rf"
+    elif "neat" in model:
+        temporary_model = "neat"
     else:
         temporary_model = model
 
@@ -60,11 +66,19 @@ def load_models(model):
             print("Finding NN models...")
             load_nn_models(model)
             trained = 'trained'
+        case "rf":
+            print("Finding Random Forest models...")
+            load_rf_models(model)
+            trained = 'trained'
+        case "neat":
+            print("Finding NEAT models...")
+            load_neat_models(model)
+            trained = 'trained'
         case _:
             print("Invalid model")
             trained = 'not trained'
     return trained
-            
+
 
 def data_extraction(data_set, model=None):
     """

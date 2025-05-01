@@ -5,8 +5,10 @@ from cv import *
 from image_handler import *
 from nn import *
 from main import image_list
+from random_forest import *
+from nn_neat import *
 
-model_list = ['svc', 'lsvc', 'psvc', 'lreg-lasso', 'lreg-lsr', 'lreg-ridge', 'cv-ridge', 'cv-lasso', 'cl_nn', 'improved_nn', 'cc_nn', 'flexible_cnn']      # list of models available
+model_list = ['svc', 'lsvc', 'psvc', 'lreg-lasso', 'lreg-lsr', 'lreg-ridge', 'cv-ridge', 'cv-lasso', 'cl_nn', 'improved_nn', 'cc_nn', 'flexible_cnn', 'rf', 'neat']      # list of models available
 
 def commandpath():
     """
@@ -69,8 +71,12 @@ def command_model(actual_model=None, actual_train_status=None):
     print("-----------Neural Network-------------")
     print("     > Conventional Linear Neural Network => cl_nn")
     print("     > Improved Conventional Linear Neural Network => improved_nn")
-    print("     > Custom Conventional Neural Network => cc_nn (WIP)")
+    # print("     > Custom Conventional Neural Network => cc_nn (WIP)")
     print("     > Flexible CNN with Residual Connections => flexible_cnn")
+    print("----------Random Forest--------------")
+    print("     > Random Forest => rf (WIP)")
+    print("----------------Neat-----------------")
+    print("     > NEAT => neat (WIP)")
     print("WIP = Work In Progress")
     print("x = not working well as it use continuous data prediction, i.e. it is not a classification model\n")
     model = input("     => ")       # get the new wanted model from user
@@ -132,6 +138,24 @@ def command_model(actual_model=None, actual_train_status=None):
         case "nn":
             from nn import f_hidden_size, m_hidden_size
             if f_hidden_size is None or m_hidden_size is None:
+                print("model not trained")
+                train_status = "not trained"
+            else:
+                print("model already trained")
+                print("you can already use it")
+                train_status = "trained"
+        case "rf":
+            from random_forest import f_D_m, m_D_m
+            if f_D_m is None or m_D_m is None:
+                print("model not trained")
+                train_status = "not trained"
+            else:
+                print("model already trained")
+                print("you can already use it")
+                train_status = "trained"
+        case "neat":
+            from nn_neat import f_D_m, m_D_m
+            if f_D_m is None or m_D_m is None:
                 print("model not trained")
                 train_status = "not trained"
             else:
@@ -268,6 +292,14 @@ def command(model, train_status):
                         print("training with flexible cnn")
                         nn_train(f_train_data, f_train_label, m_train_data, m_train_label, model)
                         train_status = "trained"
+                    case "rf":
+                        print("training with random forest")
+                        rf_train(f_train_data, f_train_label, m_train_data, m_train_label, model)
+                        train_status = "trained"
+                    case "neat":
+                        print("training with neat")
+                        neat_train(f_train_data, f_train_label, m_train_data, m_train_label, model)
+                        train_status = "trained"
                     case _:
                         print("unknown model")
             pass
@@ -312,6 +344,12 @@ def command(model, train_status):
                     case "nn":
                         print("Testing with neural network...")
                         nn_test(f_test_data, f_test_label, m_test_data, m_test_label, model)
+                    case "rf":
+                        print("Testing with random forest...")
+                        rf_test(f_test_data, f_test_label, m_test_data, m_test_label)
+                    case "neat":
+                        print("Testing with neat...")
+                        neat_test(f_test_data, f_test_label, m_test_data, m_test_label, model)
             pass
 
         case "model":
@@ -350,6 +388,12 @@ def command(model, train_status):
                         case "nn":
                             print("Predicting with neural network...")
                             nn_predict(image_number, model)
+                        case "rf":
+                            print("Predicting with random forest...")
+                            rf_predict(image_number)
+                        case "neat":
+                            print("Predicting with neat...")
+                            neat_predict(image_number)
                         case _:
                             print("unknown model")
                 else:
@@ -398,6 +442,12 @@ def command(model, train_status):
                     case "nn":
                         print("Showing parameters of neural network...")
                         nn_param()
+                    case "rf":
+                        print("Showing parameters of random forest...")
+                        rf_param(model)
+                    case "neat":
+                        print("Showing parameters of neat...")
+                        neat_param(model)
         case _:
             # Handle unknown commands
             print("unknown command")

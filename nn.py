@@ -10,8 +10,6 @@ from alive_progress import alive_bar
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
 import lightning as L
-import torch.nn.functional as F # nn.functional give us access to the activation and loss functions.
-from torch.nn.functional import dropout
 from torch.optim import Adam # optim contains many optimizers. This time we're using Adam
 from path import path
 import numpy as np
@@ -19,7 +17,7 @@ from database import get_image_data
 from flexible_cnn import FlexibleCNN, train_flexible_cnn
 
 # use GPU if available
-print("Using GPU for Neural Networks" if torch.cuda.is_available() or torch.backends.mps.is_available() else "Using CPU for Neural Networks, no GPU available. \nMaybe du to a non NVIDIA GPU")
+print("Using GPU for Neural Networks" if torch.cuda.is_available() or torch.backends.mps.is_available() else "Using CPU for Neural Networks, no usable GPU found. \nMaybe due to a non NVIDIA GPU or a non apple silicon chip")
 
 # ---------------------------------------------------
 # GPU or CPU usage
