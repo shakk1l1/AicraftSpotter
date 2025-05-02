@@ -192,6 +192,7 @@ def eval_genomes(genomes, config, X, y):
     :return: None
     """
     for genome_id, genome in genomes:
+        print(f"Evaluating genome {genome_id}")
         net = neat_python.nn.FeedForwardNetwork.create(genome, config)
 
         # Initialize fitness
@@ -345,31 +346,51 @@ def neat_train_s(data, label, model, size, using_set, num_generations):
 
     # Create a custom reporter for plotting
     class PlotReporter(neat_python.reporting.BaseReporter):
-        def __init__(self):
+        def __init__(self, progress_bar=None):
             self.generation = 0
             self.best_fitness = []
             self.avg_fitness = []
             self.generations = []
+            self.progress_bar = progress_bar
+            self.plot_initialized = False
+            self.fig = None
+            self.ax = None
+            self.best_line = None
+            self.avg_line = None
 
-            # Initialize the plot
+            # Defer plot initialization to reduce startup blocking
+
+        def _initialize_plot(self):
+            if self.plot_initialized:
+                return
+
+            # Initialize the plot with a smaller figure size to reduce rendering time
             plt.ion()  # Turn on interactive mode
-            self.fig, self.ax = plt.subplots(figsize=(10, 6))
-            self.fig.suptitle(f"NEAT Training Progress - {using_set}", fontsize=16)
+            plt.ioff()  # Turn off interactive mode temporarily during setup
+            self.fig, self.ax = plt.subplots(figsize=(8, 4))
+            self.fig.suptitle(f"NEAT Training Progress - {using_set}", fontsize=12)
 
-            # Setup fitness plot
+            # Setup fitness plot with simpler styling
             self.ax.set_xlabel('Generation')
             self.ax.set_ylabel('Fitness')
-            self.ax.set_title('Fitness over Generations')
             self.best_line, = self.ax.plot([], [], 'b-', label='Best Fitness')
             self.avg_line, = self.ax.plot([], [], 'r-', label='Average Fitness')
-            self.ax.legend()
+            self.ax.legend(loc='upper left', fontsize='small')
 
-            # Show the plot
+            # Show the plot non-blocking
+            plt.ion()  # Turn interactive mode back on
             plt.show(block=False)
+            plt.pause(0.001)  # Small pause to ensure window appears
+
+            self.plot_initialized = True
 
         def end_generation(self, config, population, species_set):
             self.generation += 1
             self.generations.append(self.generation)
+
+            # Update progress bar first to ensure it's responsive
+            if self.progress_bar:
+                self.progress_bar()
 
             best_genome = None
             best_fitness = -1
@@ -384,26 +405,50 @@ def neat_train_s(data, label, model, size, using_set, num_generations):
             avg_fitness = sum(g.fitness for g in population.values()) / len(population)
             self.avg_fitness.append(avg_fitness)
 
-            # Update the plot
-            self.best_line.set_data(self.generations, self.best_fitness)
-            self.avg_line.set_data(self.generations, self.avg_fitness)
+            # Only update the plot every 5 generations to reduce blocking
+            if self.generation % 5 == 0 or self.generation == 1:
+                try:
+                    # Initialize plot if needed
+                    self._initialize_plot()
 
-            # Adjust the plot limits
-            self.ax.relim()
-            self.ax.autoscale_view()
+                    # Update the plot
+                    self.best_line.set_data(self.generations, self.best_fitness)
+                    self.avg_line.set_data(self.generations, self.avg_fitness)
 
-            # Redraw the figure
-            self.fig.canvas.draw_idle()
-            self.fig.canvas.flush_events()
+                    # Adjust the plot limits
+                    self.ax.relim()
+                    self.ax.autoscale_view()
+
+                    # Redraw the figure with minimal blocking
+                    self.fig.canvas.draw_idle()
+                    self.fig.canvas.flush_events()
+                    plt.pause(0.001)  # Small pause to allow GUI to update
+                except Exception as e:
+                    print(f"Warning: Plot update failed: {e}")
+                    # Continue execution even if plotting fails
 
         def found_solution(self, config, generation, best):
             pass
 
         def save_plot(self, filename):
-            plt.savefig(filename)
+            try:
+                # Initialize plot if it hasn't been initialized yet
+                if not self.plot_initialized:
+                    self._initialize_plot()
 
-    plot_reporter = PlotReporter()
-    p.add_reporter(plot_reporter)
+                    # If this is the first time initializing the plot, we need to update it
+                    if self.generations:
+                        self.best_line.set_data(self.generations, self.best_fitness)
+                        self.avg_line.set_data(self.generations, self.avg_fitness)
+                        self.ax.relim()
+                        self.ax.autoscale_view()
+                        self.fig.canvas.draw_idle()
+
+                # Save the figure
+                plt.savefig(filename)
+                print(f"Plot saved to {filename}")
+            except Exception as e:
+                print(f"Warning: Failed to save plot to {filename}: {e}")
 
     # Run the evolution
     print(f"Evolving for {num_generations} generations...")
@@ -413,8 +458,15 @@ def neat_train_s(data, label, model, size, using_set, num_generations):
     eval_function = lambda genomes, config: eval_genomes(genomes, config, data, encoded_labels)
 
     # Run the evolution with a progress bar
-    with alive_bar(num_generations, force_tty=True, title=f'Evolving {using_set} NEAT model') as bar:
-        winner = p.run(eval_function, num_generations, step_callback=lambda _: bar())
+    with alive_bar(num_generations, force_tty=True, title=f'Evolving {using_set} NEAT model', max_cols=270) as bar:
+        # Create a plot reporter with progress bar
+        plot_reporter = PlotReporter(progress_bar=bar)
+        p.add_reporter(plot_reporter)
+
+        # Run the evolution
+        print("Starting evolution...")
+        winner = p.run(eval_function, num_generations)
+        print("Evolution completed.")
 
     end_time = time.time()
     print(f"Evolution completed in {end_time - start_time:.2f} seconds")
@@ -581,7 +633,7 @@ def neat_test_s(data, label, used_set, D_m, winner_net, le):
 
     # Make predictions
     predictions = []
-    with alive_bar(len(data), force_tty=True, title=f'Testing {used_set} NEAT model') as bar:
+    with alive_bar(len(data), force_tty=True, title=f'Testing {used_set} NEAT model' , max_cols=270) as bar:
         for i, sample in enumerate(data):
             # Get the network output
             output = winner_net.activate(sample)
