@@ -7,8 +7,11 @@ import numpy as np
 from alive_progress import alive_bar
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
+from sklearn.decomposition import PCA
 import neat as neat_python
 import pickle
+import multiprocessing
+from functools import partial
 from path import path
 from database import get_image_data
 
@@ -20,6 +23,7 @@ le_man = None
 f_D_m, m_D_m = None, None
 f_winner_net, m_winner_net = None, None
 f_config, m_config = None, None
+f_pca, m_pca = None, None  # PCA models for dimensionality reduction
 
 def load_neat_models(model):
     """
@@ -36,6 +40,7 @@ def load_neat_models(model):
     global f_D_m, m_D_m
     global f_winner_net, m_winner_net
     global f_config, m_config
+    global f_pca, m_pca  # Add global variables for PCA models
 
     # Check if the model files exist
     if os.path.exists(os.path.join(path, 'models/' + model, 'm_winner.pkl')) and os.path.exists(os.path.join(path, 'models/' + model, 'f_winner.pkl')):
@@ -85,13 +90,30 @@ def load_neat_models(model):
         os.path.join(path, 'models/' + model, 'm_config.txt')
     )
 
+    # Load PCA models if they exist
+    f_pca = None
+    m_pca = None
+    try:
+        if os.path.exists(os.path.join(path, 'models/' + model, 'f_pca_model.pkl')):
+            f_pca = joblib.load(os.path.join(path, 'models/' + model, 'f_pca_model.pkl'))
+            print(f"Family PCA model loaded: {f_pca.n_components_} components")
+    except Exception as e:
+        print(f"Warning: Could not load family PCA model: {e}")
+
+    try:
+        if os.path.exists(os.path.join(path, 'models/' + model, 'm_pca_model.pkl')):
+            m_pca = joblib.load(os.path.join(path, 'models/' + model, 'm_pca_model.pkl'))
+            print(f"Manufacturer PCA model loaded: {m_pca.n_components_} components")
+    except Exception as e:
+        print(f"Warning: Could not load manufacturer PCA model: {e}")
+
     # call the function to change size and gray
     change_size(model)
     print("Models loaded")
 
 def create_neat_config(input_size, output_size, filename):
     """
-    Create a NEAT configuration file
+    Create a NEAT configuration file with optimized parameters for faster training
     :param input_size: number of inputs
     :param output_size: number of outputs
     :param filename: filename to save the configuration
@@ -100,14 +122,14 @@ def create_neat_config(input_size, output_size, filename):
     config_text = f"""
 [NEAT]
 fitness_criterion     = max
-fitness_threshold     = 0.95
-pop_size              = 150
-reset_on_extinction   = False
+fitness_threshold     = 0.9
+pop_size              = 100
+reset_on_extinction   = True
 
 [DefaultGenome]
 # node activation options
-activation_default      = sigmoid
-activation_mutate_rate  = 0.1
+activation_default      = relu
+activation_mutate_rate  = 0.05
 activation_options      = sigmoid tanh relu
 
 # node aggregation options
@@ -126,22 +148,22 @@ bias_replace_rate       = 0.1
 
 # genome compatibility options
 compatibility_disjoint_coefficient = 1.0
-compatibility_weight_coefficient   = 0.5
+compatibility_weight_coefficient   = 0.6
 
 # connection add/remove rates
-conn_add_prob           = 0.5
-conn_delete_prob        = 0.5
+conn_add_prob           = 0.3
+conn_delete_prob        = 0.3
 
 # connection enable options
 enabled_default         = True
 enabled_mutate_rate     = 0.01
 
 feed_forward            = True
-initial_connection      = partial_direct 0.5
+initial_connection      = full_direct
 
 # node add/remove rates
-node_add_prob           = 0.2
-node_delete_prob        = 0.2
+node_add_prob           = 0.1
+node_delete_prob        = 0.1
 
 # network parameters
 num_hidden              = 0
@@ -171,48 +193,80 @@ compatibility_threshold = 3.0
 
 [DefaultStagnation]
 species_fitness_func = max
-max_stagnation       = 20
+max_stagnation       = 15
 species_elitism      = 2
 
 [DefaultReproduction]
 elitism            = 2
-survival_threshold = 0.2
+survival_threshold = 0.3
 """
 
     with open(filename, 'w') as f:
         f.write(config_text)
 
+def eval_genome(genome, config, X, y):
+    """
+    Evaluate a single genome with optimized batch processing
+    :param genome: genome to evaluate
+    :param config: NEAT configuration
+    :param X: input data
+    :param y: target labels
+    :return: genome fitness (accuracy)
+    """
+    net = neat_python.nn.FeedForwardNetwork.create(genome, config)
+
+    # Use batch processing for faster evaluation
+    # Process in smaller batches to avoid memory issues
+    batch_size = 100
+    num_samples = len(y)
+    num_batches = (num_samples + batch_size - 1) // batch_size  # Ceiling division
+
+    correct_predictions = 0
+    for i in range(num_batches):
+        start_idx = i * batch_size
+        end_idx = min((i + 1) * batch_size, num_samples)
+
+        # Process current batch
+        batch_X = X[start_idx:end_idx]
+        batch_y = y[start_idx:end_idx]
+
+        # Get predictions for the batch
+        predictions = []
+        for xi in batch_X:
+            output = net.activate(xi)
+            predictions.append(np.argmax(output))
+
+        # Count correct predictions in this batch
+        correct_predictions += sum(1 for pred, true in zip(predictions, batch_y) if pred == true)
+
+    # Return fitness as accuracy
+    return correct_predictions / num_samples
+
 def eval_genomes(genomes, config, X, y):
     """
-    Evaluate the fitness of each genome
+    Evaluate the fitness of each genome in parallel
     :param genomes: list of genomes to evaluate
     :param config: NEAT configuration
     :param X: input data
     :param y: target labels
     :return: None
     """
-    for genome_id, genome in genomes:
-        print(f"Evaluating genome {genome_id}")
-        net = neat_python.nn.FeedForwardNetwork.create(genome, config)
+    # Get the number of available CPU cores (leave one for the OS)
+    num_workers = max(1, multiprocessing.cpu_count() - 1)
 
-        # Initialize fitness
-        genome.fitness = 0
+    # Create a partial function that only needs the genome
+    eval_function = partial(eval_genome, config=config, X=X, y=y)
 
-        # Evaluate the genome on all samples
-        correct_predictions = 0
-        for xi, yi in zip(X, y):
-            # Get the network output
-            output = net.activate(xi)
+    # Create a list of genomes for parallel evaluation
+    genome_list = [genome for _, genome in genomes]
 
-            # Get the predicted class (index of max value)
-            predicted_class = np.argmax(output)
+    # Evaluate genomes in parallel
+    with multiprocessing.Pool(processes=num_workers) as pool:
+        fitnesses = pool.map(eval_function, genome_list)
 
-            # Check if prediction is correct
-            if predicted_class == yi:
-                correct_predictions += 1
-
-        # Set fitness as accuracy
-        genome.fitness = correct_predictions / len(y)
+    # Assign the fitness back to each genome
+    for (_, genome), fitness in zip(genomes, fitnesses):
+        genome.fitness = fitness
 
 def neat_train(data_family, label_family, data_manufacturer, label_manufacturer, model):
     """
@@ -238,13 +292,30 @@ def neat_train(data_family, label_family, data_manufacturer, label_manufacturer,
     f_num_generations = num_generations
     m_num_generations = num_generations
 
+    # Ask if PCA should be used for dimensionality reduction
+    use_pca = input("\nUse PCA for dimensionality reduction? (y/n): ").lower() == 'y'
+    if use_pca:
+        pca_components = input("Enter number of PCA components (integer) or variance to preserve (0.0-1.0): ")
+        try:
+            # Check if it's a float between 0 and 1
+            pca_value = float(pca_components)
+            if 0 < pca_value < 1:
+                n_components = pca_value  # Variance to preserve
+            else:
+                n_components = int(pca_value)  # Number of components
+        except ValueError:
+            print("Invalid input. Using 0.95 variance as default.")
+            n_components = 0.95
+    else:
+        n_components = None
+
     print("\nTraining family model...")
     f_input_size, f_num_classes, le_fam, f_D_m, f_winner_net, f_config = neat_train_s(
-        data_family, label_family, model, size, "f_", num_generations)
+        data_family, label_family, model, size, "f_", num_generations, n_components)
 
     print("\nTraining manufacturer model...")
     m_input_size, m_num_classes, le_man, m_D_m, m_winner_net, m_config = neat_train_s(
-        data_manufacturer, label_manufacturer, model, size, "m_", num_generations)
+        data_manufacturer, label_manufacturer, model, size, "m_", num_generations, n_components)
 
     # Create directory if it doesn't exist
     if not os.path.exists(os.path.join(path, 'models/' + model)):
@@ -289,7 +360,7 @@ def neat_train(data_family, label_family, data_manufacturer, label_manufacturer,
 
     print("Models saved")
 
-def neat_train_s(data, label, model, size, using_set, num_generations):
+def neat_train_s(data, label, model, size, using_set, num_generations, n_components=None):
     """
     Train a single NEAT model
     :param data: training data
@@ -298,6 +369,7 @@ def neat_train_s(data, label, model, size, using_set, num_generations):
     :param size: image size
     :param using_set: prefix for model files (f_ or m_)
     :param num_generations: number of generations to evolve
+    :param n_components: number of PCA components or variance to preserve (None for no PCA)
     :return: input_size, num_classes, le, D_m, winner_net, config
     """
     # Convert data to numpy array
@@ -310,13 +382,27 @@ def neat_train_s(data, label, model, size, using_set, num_generations):
     print("Centering data...")
     data = data - D_m
 
+    # Apply PCA if requested
+    pca_model = None
+    if n_components is not None:
+        print(f"Applying PCA with {n_components} components/variance...")
+        pca_model = PCA(n_components=n_components)
+        data = pca_model.fit_transform(data)
+        explained_variance = sum(pca_model.explained_variance_ratio_) * 100
+        print(f"PCA applied: {data.shape[1]} components, {explained_variance:.2f}% variance explained")
+
+        # Save the PCA model
+        if not os.path.exists(os.path.join(path, 'models/' + model)):
+            os.makedirs(os.path.join(path, 'models/' + model))
+        joblib.dump(pca_model, os.path.join(path, 'models/' + model, f'{using_set}pca_model.pkl'))
+
     # Encode labels
     print("Encoding labels...")
     le = LabelEncoder()
     encoded_labels = le.fit_transform(label)
 
     # Get input and output sizes
-    input_size = data.shape[1]  # Flattened image size
+    input_size = data.shape[1]  # Flattened image size (after PCA if applied)
     num_classes = len(le.classes_)
 
     # Create config file
@@ -344,7 +430,7 @@ def neat_train_s(data, label, model, size, using_set, num_generations):
     # Create a checkpoint every 10 generations
     p.add_reporter(neat_python.Checkpointer(10, filename_prefix=os.path.join(path, f'neat-checkpoint-{using_set}')))
 
-    # Create a custom reporter for plotting
+    # Create a custom reporter for plotting with minimal overhead
     class PlotReporter(neat_python.reporting.BaseReporter):
         def __init__(self, progress_bar=None):
             self.generation = 0
@@ -357,30 +443,32 @@ def neat_train_s(data, label, model, size, using_set, num_generations):
             self.ax = None
             self.best_line = None
             self.avg_line = None
-
-            # Defer plot initialization to reduce startup blocking
+            # Flag to control whether to show plots during training
+            self.show_plot_during_training = False  # Set to False to disable interactive plotting
 
         def _initialize_plot(self):
             if self.plot_initialized:
                 return
 
-            # Initialize the plot with a smaller figure size to reduce rendering time
-            plt.ion()  # Turn on interactive mode
-            plt.ioff()  # Turn off interactive mode temporarily during setup
-            self.fig, self.ax = plt.subplots(figsize=(8, 4))
-            self.fig.suptitle(f"NEAT Training Progress - {using_set}", fontsize=12)
+            # Only initialize the plot if we're showing it during training or at the end
+            if self.show_plot_during_training:
+                # Initialize the plot with a smaller figure size to reduce rendering time
+                plt.ion()  # Turn on interactive mode
+                plt.ioff()  # Turn off interactive mode temporarily during setup
+                self.fig, self.ax = plt.subplots(figsize=(8, 4))
+                self.fig.suptitle(f"NEAT Training Progress - {using_set}", fontsize=12)
 
-            # Setup fitness plot with simpler styling
-            self.ax.set_xlabel('Generation')
-            self.ax.set_ylabel('Fitness')
-            self.best_line, = self.ax.plot([], [], 'b-', label='Best Fitness')
-            self.avg_line, = self.ax.plot([], [], 'r-', label='Average Fitness')
-            self.ax.legend(loc='upper left', fontsize='small')
+                # Setup fitness plot with simpler styling
+                self.ax.set_xlabel('Generation')
+                self.ax.set_ylabel('Fitness')
+                self.best_line, = self.ax.plot([], [], 'b-', label='Best Fitness')
+                self.avg_line, = self.ax.plot([], [], 'r-', label='Average Fitness')
+                self.ax.legend(loc='upper left', fontsize='small')
 
-            # Show the plot non-blocking
-            plt.ion()  # Turn interactive mode back on
-            plt.show(block=False)
-            plt.pause(0.001)  # Small pause to ensure window appears
+                # Show the plot non-blocking
+                plt.ion()  # Turn interactive mode back on
+                plt.show(block=False)
+                plt.pause(0.001)  # Small pause to ensure window appears
 
             self.plot_initialized = True
 
@@ -392,21 +480,20 @@ def neat_train_s(data, label, model, size, using_set, num_generations):
             if self.progress_bar:
                 self.progress_bar()
 
-            best_genome = None
-            best_fitness = -1
-            for _, genome in population.items():
-                if genome.fitness > best_fitness:
-                    best_fitness = genome.fitness
-                    best_genome = genome
-
+            # Find best fitness
+            best_fitness = max(genome.fitness for _, genome in population.items())
             self.best_fitness.append(best_fitness)
 
-            # Calculate average fitness
-            avg_fitness = sum(g.fitness for g in population.values()) / len(population)
+            # Calculate average fitness more efficiently
+            avg_fitness = sum(genome.fitness for _, genome in population.items()) / len(population)
             self.avg_fitness.append(avg_fitness)
 
-            # Only update the plot every 5 generations to reduce blocking
-            if self.generation % 5 == 0 or self.generation == 1:
+            # Print progress information every 10 generations
+            if self.generation % 10 == 0:
+                print(f"Generation {self.generation}: Best Fitness = {best_fitness:.4f}, Avg Fitness = {avg_fitness:.4f}")
+
+            # Only update the plot every 10 generations to reduce overhead
+            if self.show_plot_during_training and (self.generation % 10 == 0 or self.generation == 1):
                 try:
                     # Initialize plot if needed
                     self._initialize_plot()
@@ -432,30 +519,81 @@ def neat_train_s(data, label, model, size, using_set, num_generations):
 
         def save_plot(self, filename):
             try:
-                # Initialize plot if it hasn't been initialized yet
-                if not self.plot_initialized:
-                    self._initialize_plot()
-
-                    # If this is the first time initializing the plot, we need to update it
-                    if self.generations:
-                        self.best_line.set_data(self.generations, self.best_fitness)
-                        self.avg_line.set_data(self.generations, self.avg_fitness)
-                        self.ax.relim()
-                        self.ax.autoscale_view()
-                        self.fig.canvas.draw_idle()
+                # For the final plot, we'll create it from scratch using the collected data
+                # This is more efficient than maintaining a plot during training
+                plt.figure(figsize=(10, 6))
+                plt.plot(self.generations, self.best_fitness, 'b-', label='Best Fitness')
+                plt.plot(self.generations, self.avg_fitness, 'r-', label='Average Fitness')
+                plt.title(f"NEAT Training Progress - {using_set}")
+                plt.xlabel('Generation')
+                plt.ylabel('Fitness')
+                plt.legend(loc='upper left')
+                plt.grid(True, linestyle='--', alpha=0.7)
 
                 # Save the figure
                 plt.savefig(filename)
                 print(f"Plot saved to {filename}")
+
+                # Close the figure to free memory
+                plt.close()
             except Exception as e:
                 print(f"Warning: Failed to save plot to {filename}: {e}")
 
+    # Create an early stopping class
+    class EarlyStoppingReporter(neat_python.reporting.BaseReporter):
+        def __init__(self, patience=10, min_improvement=0.001, fitness_threshold=0.9):
+            self.patience = patience
+            self.min_improvement = min_improvement
+            self.fitness_threshold = fitness_threshold
+            self.best_fitness = -float('inf')
+            self.generations_no_improvement = 0
+            self.should_stop = False
+            self.generation = 0
+
+        def end_generation(self, config, population, species_set):
+            self.generation += 1
+            current_best = max(genome.fitness for _, genome in population.items())
+
+            # Check if we've reached the fitness threshold
+            if current_best >= self.fitness_threshold:
+                print(f"\nEarly stopping: Reached fitness threshold {self.fitness_threshold} at generation {self.generation}")
+                self.should_stop = True
+                return
+
+            # Check for improvement
+            improvement = current_best - self.best_fitness
+            if improvement > self.min_improvement:
+                self.best_fitness = current_best
+                self.generations_no_improvement = 0
+            else:
+                self.generations_no_improvement += 1
+
+            # Check if we should stop due to no improvement
+            if self.generations_no_improvement >= self.patience:
+                print(f"\nEarly stopping: No improvement for {self.patience} generations at generation {self.generation}")
+                self.should_stop = True
+
+    # Custom run function with early stopping
+    def run_with_early_stopping(population, eval_function, n, early_stopping):
+        for i in range(n):
+            population.run(eval_function, 1)  # Run for one generation
+
+            if early_stopping.should_stop:
+                print(f"Early stopping triggered after {early_stopping.generation} generations")
+                break
+
+        return population.best_genome
+
     # Run the evolution
-    print(f"Evolving for {num_generations} generations...")
+    print(f"Evolving for up to {num_generations} generations with early stopping...")
     start_time = time.time()
 
     # Create a partial function for evaluation
     eval_function = lambda genomes, config: eval_genomes(genomes, config, data, encoded_labels)
+
+    # Create early stopping reporter
+    early_stopping = EarlyStoppingReporter(patience=15, min_improvement=0.001, fitness_threshold=0.9)
+    p.add_reporter(early_stopping)
 
     # Run the evolution with a progress bar
     with alive_bar(num_generations, force_tty=True, title=f'Evolving {using_set} NEAT model', max_cols=270) as bar:
@@ -463,9 +601,9 @@ def neat_train_s(data, label, model, size, using_set, num_generations):
         plot_reporter = PlotReporter(progress_bar=bar)
         p.add_reporter(plot_reporter)
 
-        # Run the evolution
+        # Run the evolution with early stopping
         print("Starting evolution...")
-        winner = p.run(eval_function, num_generations)
+        winner = run_with_early_stopping(p, eval_function, num_generations, early_stopping)
         print("Evolution completed.")
 
     end_time = time.time()
@@ -533,6 +671,17 @@ def neat_predict(image_name):
     d_img_c = d_img_array - f_D_m
     end_center_f = time.time()
 
+    # Apply PCA if available
+    if f_pca is not None:
+        print("Applying PCA transformation...")
+        start_pca_f = time.time()
+        d_img_c = f_pca.transform(d_img_c)
+        end_pca_f = time.time()
+        print(f"PCA applied: reduced to {d_img_c.shape[1]} dimensions")
+        pca_time_f = end_pca_f - start_pca_f
+    else:
+        pca_time_f = 0
+
     # Predicting
     print("\nPredicting...")
     start_predict_f = time.time()
@@ -555,6 +704,17 @@ def neat_predict(image_name):
     start_center_m = time.time()
     d_img_c = d_img_array - m_D_m
     end_center_m = time.time()
+
+    # Apply PCA if available
+    if m_pca is not None:
+        print("Applying PCA transformation...")
+        start_pca_m = time.time()
+        d_img_c = m_pca.transform(d_img_c)
+        end_pca_m = time.time()
+        print(f"PCA applied: reduced to {d_img_c.shape[1]} dimensions")
+        pca_time_m = end_pca_m - start_pca_m
+    else:
+        pca_time_m = 0
 
     # Predicting
     print("\nPredicting...")
@@ -584,9 +744,15 @@ def neat_predict(image_name):
     # print the time taken for each step
     print(f"\nExtracting time: {end_extract - start_extract:.2f} seconds")
     print(f"\nFamily centering time: {end_center_f - start_center_f:.2f} seconds")
+    if f_pca is not None:
+        print(f"Family PCA time: {pca_time_f:.2f} seconds")
     print(f"Family predicting time: {end_predict_f - start_predict_f:.2f} seconds")
+
     print(f"\nManufacturer centering time: {end_center_m - start_center_m:.2f} seconds")
+    if m_pca is not None:
+        print(f"Manufacturer PCA time: {pca_time_m:.2f} seconds")
     print(f"Manufacturer predicting time: {end_predict_m - start_predict_m:.2f} seconds")
+
     print(f"\nTotal predicting time: {end_predict_m - start_predict:.2f} seconds")
     return None
 
@@ -600,11 +766,11 @@ def neat_test(data_family, label_family, data_manufacturer, label_manufacturer):
     :return: None
     """
     print("\nTesting family model...")
-    neat_test_s(data_family, label_family, "f_", f_D_m, f_winner_net, le_fam)
+    neat_test_s(data_family, label_family, "f_", f_D_m, f_winner_net, le_fam, f_pca)
     print("\nTesting manufacturer model...")
-    neat_test_s(data_manufacturer, label_manufacturer, "m_", m_D_m, m_winner_net, le_man)
+    neat_test_s(data_manufacturer, label_manufacturer, "m_", m_D_m, m_winner_net, le_man, m_pca)
 
-def neat_test_s(data, label, used_set, D_m, winner_net, le):
+def neat_test_s(data, label, used_set, D_m, winner_net, le, pca_model=None):
     """
     Test a single NEAT model
     :param data: test data
@@ -613,6 +779,7 @@ def neat_test_s(data, label, used_set, D_m, winner_net, le):
     :param D_m: mean value for centering
     :param winner_net: trained NEAT network
     :param le: label encoder
+    :param pca_model: PCA model for dimensionality reduction (optional)
     :return: None
     """
     # convert data to numpy array
@@ -624,6 +791,17 @@ def neat_test_s(data, label, used_set, D_m, winner_net, le):
     start_center = time.time()
     data = data - D_m
     end_center = time.time()
+
+    # Apply PCA if available
+    if pca_model is not None:
+        print("Applying PCA transformation...")
+        start_pca = time.time()
+        data = pca_model.transform(data)
+        end_pca = time.time()
+        print(f"PCA applied: reduced to {data.shape[1]} dimensions")
+        pca_time = end_pca - start_pca
+    else:
+        pca_time = 0
 
     # Encode labels
     encoded_labels = le.transform(label)
@@ -664,8 +842,11 @@ def neat_test_s(data, label, used_set, D_m, winner_net, le):
 
     # Print timing information
     print(f"\nCentering time: {end_center - start_center:.2f} seconds")
+    if pca_model is not None:
+        print(f"PCA time: {pca_time:.2f} seconds")
     print(f"Prediction time: {end_predict - start_predict:.2f} seconds")
-    print(f"Total testing time: {end_predict - start_center:.2f} seconds")
+    total_time = (end_center - start_center) + pca_time + (end_predict - start_predict)
+    print(f"Total testing time: {total_time:.2f} seconds")
 
 def neat_param(model):
     """
@@ -684,9 +865,19 @@ def neat_param(model):
     print(f"Number of classes: {f_num_classes}")
     print(f"Number of generations: {f_num_generations}")
 
+    # Show PCA information if available
+    if f_pca is not None:
+        print("\nFamily PCA parameters:")
+        print(f"Number of components: {f_pca.n_components_}")
+        print(f"Explained variance ratio: {sum(f_pca.explained_variance_ratio_) * 100:.2f}%")
+        print(f"Original dimensions: {f_pca.n_features_in_}")
+        print(f"Reduced dimensions: {f_pca.n_components_}")
+        print(f"Dimensionality reduction: {(1 - f_pca.n_components_ / f_pca.n_features_in_) * 100:.2f}%")
+
     # Get network structure information
     f_nodes = len(f_winner_net.node_evals)
     f_connections = sum(1 for node, links in f_winner_net.node_evals for link in links)
+    print(f"\nFamily network structure:")
     print(f"Network nodes: {f_nodes}")
     print(f"Network connections: {f_connections}")
 
@@ -695,8 +886,18 @@ def neat_param(model):
     print(f"Number of classes: {m_num_classes}")
     print(f"Number of generations: {m_num_generations}")
 
+    # Show PCA information if available
+    if m_pca is not None:
+        print("\nManufacturer PCA parameters:")
+        print(f"Number of components: {m_pca.n_components_}")
+        print(f"Explained variance ratio: {sum(m_pca.explained_variance_ratio_) * 100:.2f}%")
+        print(f"Original dimensions: {m_pca.n_features_in_}")
+        print(f"Reduced dimensions: {m_pca.n_components_}")
+        print(f"Dimensionality reduction: {(1 - m_pca.n_components_ / m_pca.n_features_in_) * 100:.2f}%")
+
     # Get network structure information
     m_nodes = len(m_winner_net.node_evals)
     m_connections = sum(1 for node, links in m_winner_net.node_evals for link in links)
+    print(f"\nManufacturer network structure:")
     print(f"Network nodes: {m_nodes}")
     print(f"Network connections: {m_connections}")
