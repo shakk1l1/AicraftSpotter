@@ -277,7 +277,7 @@ def nn_train_s(data, label, sel_model, size, using_set, hidden_size=None, num_la
         # Select hyperparameters
         if sel_model == "flexible_cnn":
             (hidden_size, num_layers, learning_rate, num_epochs, filtersize, num_filters, poolsize,
-             dropout_prob, batch_size) = hyperparameters_selector_2(model)
+             dropout_prob, batch_size) = hyperparameters_selector_2(sel_model)
         elif sel_model == "cl_nn":
             hidden_size, num_layers, learning_rate, num_epochs, filtersize, num_filters, poolsize = hyperparameters_selector(sel_model)
         else:
@@ -572,7 +572,7 @@ def nn_predict(image_name, model):
     plt.figure(figsize=(15, 5))
     plt.imshow(croped_img, cmap='gray' if gray else None)
     if model == "flexible_cnn":
-        plt.title(f'Predicted family: {predicted_f[0]} with a confidence of {round(confidence_percentages_f[0], 2)}\n Predicted manufacturer: {predicted_m[0]}  with a confidence of {round(confidence_percentages_m[0], 2)}')
+        plt.title(f'Predicted family: {predicted_f[0]} with a confidence of {round(confidence_percentages_f.numpy()[0], 2)} % \n Predicted manufacturer: {predicted_m[0]}  with a confidence of {round(confidence_percentages_m.numpy()[0], 2)} %')
     else:
         plt.title(f'Predicted family: {predicted_f.item()}, Predicted manufacturer: {predicted_m.item()}')
     plt.axis('off')
@@ -683,7 +683,7 @@ def nn_test_s(data, label, used_set, used_model, D_m):
     test_predicted = le.inverse_transform(test_predicted.numpy()) # tensor to ndarray using .numpy()
     test_labels = le.inverse_transform(test_labels.numpy())
 
-
+#don't touch my baby
     for target_label in set(test_labels):
         # Filtrer les indices où l'étiquette réelle correspond à "Boeing"
         # for i, label in enumerate(test_labels)

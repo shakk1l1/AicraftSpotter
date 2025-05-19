@@ -211,7 +211,7 @@ def cv_train_s(data, label, model, spca, coefficient=None):
 
     # training cv models
     print("training cv...")
-    # variance of cv possible models
+    # variance of cv possible models, #cross validation c'est good
     match model:
         case "cv-lasso":
             clf = LassoCV(cv=coefficient, random_state=0)

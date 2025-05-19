@@ -15,7 +15,7 @@ import time
 ## Global variables
 size = None
 gray = None
-
+#used in l213 command_general.py
 def load_models(model):
     """
     Load the right saves depending on the model selected
@@ -98,7 +98,7 @@ def data_extraction(data_set, model=None):
     # else ask the user
     print(" ")
     if size is None:
-        size = int(input("define size of the image (x, x)\nCAREFUL please do NOT choose 256 and above. Your PC will be unresponsive and you will need to force reboot\nFun fact: It will try to use 14Gb of cache CPU memory\nSo if you want to keep your PC alive choose 128 : "))
+        size = int(input("define size of the image (x, x)\nCAREFUL please do NOT choose 256 and above. Your PC will be unresponsive and you will need to force reboot\nFun fact: It will try to use 14Gb of cache CPU memory\nSo if you want to keep your PC alive choose 128 or LESS: "))
     else:
         print("size already defined (" + str(size) + ')')
         if input("is it correct? (y/n) ").lower() == 'n':
@@ -216,12 +216,13 @@ def file_extractor(data_path, data_set, gray, model=None):
             if size is not None:
                 # Adjust the size of the image
                 croped_img = cv2.resize(croped_img, (size, size), interpolation=cv2.INTER_AREA)
-
+            # passer d'une matrice 2D à une matrice 1D
             croped_img = croped_img.flatten()
+
             m_images.append(croped_img)
             m_labels.append(manufacturer)
             bar()
-
+            # à la fin on a une matrice 2D de taille (nb image, taille images^2)
     return m_images, m_labels
 
 def change_size(model):

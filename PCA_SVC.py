@@ -57,10 +57,10 @@ def load_svc_models(model):
 def svc_train(data_family, label_family, data_manufacturer, label_manufacturer, model):
     """
     Train the two SVC models
-    :param data_family:
-    :param label_family:
-    :param data_manufacturer:
-    :param label_manufacturer:
+    :param data_family: big matrices f_data_extracted
+    :param label_family: tuples so trkl
+    :param data_manufacturer: big matrices m_data_extracted
+    :param label_manufacturer: tuples
     :param model:
     :return:
     """
@@ -137,6 +137,8 @@ def svc_train_s(data, label, model, spca):
     start_training = time.time()
 
     # Encode labels for the plots
+    # LabelEncoder is used to convert the labels to integers and is re-used after to decode the labels
+    # that's why we use the encoder as global variable
     le = LabelEncoder()
     encoded_labels = le.fit_transform(label)
 
@@ -158,12 +160,14 @@ def svc_train_s(data, label, model, spca):
     end_center = time.time()
 
     # training PCA
+    # if pca is the same for both, spca is a float/int
+    # else specify the number of components for each
     if type(spca) is float or type(spca) is int:
         n_components  = spca
     elif spca is False:
         print("no pca")
     else:
-    # pca
+    # pca (keep order of images w label)
         n_components = n_components_selecter()
     if spca is not False:
         print("calculating pca...")
@@ -231,7 +235,7 @@ def svc_train_s(data, label, model, spca):
 
 def svc_predict(image_name):
     """
-    Predict the family and manufacturer of an image
+    Predict the family and manufacturer of one image
     :param image_name:
     :return:
     """
@@ -271,7 +275,7 @@ def svc_predict(image_name):
     d_img_c = d_img_array - f_D_m
     end_center_f = time.time()
 
-    # pca transformation
+    # pca transformation, fpca global so the same used to train
     if f_pca is None:
         print("no pca used")
         A_img = d_img_c
@@ -288,7 +292,7 @@ def svc_predict(image_name):
     pred_proba = f_clf.predict_proba(A_img)
     end_predict_f = time.time()
     pred_percentage = np.max(pred_proba) * 100
-    print(f"Predicted family: {pred[0]} ({pred_percentage:.2f}%)")
+    print(f"Predicted family: {[0]} ({pred_percentage:.2f}%)")
 
     print("\npredicting manufacturer...")
     # centering

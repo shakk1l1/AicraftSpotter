@@ -209,13 +209,13 @@ def lreg_train_s(data, label, model, spca, coefficient=None):
     match model:
         case "lreg-lasso":
             clf = Lasso(alpha=coefficient)
-            label = le.fit_transform(label)
+            label = le.fit_transform(label) # label is not compatible with lasso, needs integers, it returns a continuous value
         case "lreg-ridge":
-            clf = RidgeClassifier(alpha=coefficient)
+            clf = RidgeClassifier(alpha=coefficient)#it returns a discrete value
             le = None
         case "lreg-lsr":
             clf = LinearRegression()
-            label = le.fit_transform(label)
+            label = le.fit_transform(label) #same problem as lasso
     start_lreg = time.time()
     # train the lreg
     clf.fit(A, label)
