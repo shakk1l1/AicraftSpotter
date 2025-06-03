@@ -403,8 +403,10 @@ def cv_test_s(data, label, D_m, clf, pca, le):
     # 2nd method
     start_predict_2 = time.time()
     predictions = clf.predict(A_test)
+    """"
     if le is not None:
         predictions = le.inverse_transform(predictions.astype(int))
+    """
     accuracy = accuracy_score(label, predictions)
 
     end_predict_2 = time.time()
